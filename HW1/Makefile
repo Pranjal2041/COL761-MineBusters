@@ -49,7 +49,7 @@ info:
 	@echo "[*] Dependencies:    ${DEPENDENCIES}"
 
 run: $(APP_DIR)/$(TARGET)
-	./$(APP_DIR)/$(TARGET) fptree $(PWD)/testcases/5/test5.dat 0.98 $(PWD)/testcases/5/my_out98.dat
+	./$(APP_DIR)/$(TARGET) fptree $(PWD)/data/webdocs.dat 0.98 $(PWD)/data/my_out_98.dat
 
 test: $(APP_DIR)/$(TARGET)
 

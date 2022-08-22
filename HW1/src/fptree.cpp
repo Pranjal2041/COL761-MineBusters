@@ -133,6 +133,8 @@ void solve_fptree(string dataset_name, float support,
     dataset.next(transaction);
   }
 
+  printf("First pass done. Found %d total transactions\n", total_transactions);
+
   auto tree = make_unique<FPTree>();
   dataset = FileIterator(dataset_name);
 
@@ -148,13 +150,19 @@ void solve_fptree(string dataset_name, float support,
     tree->add_transaction(transaction);
     dataset.next(transaction);
   }
+  cout << "Second pass done. Tree constructed" << endl;
 
   tree->finalize_transactions();
 
   vector<unordered_set<string>> frqnt_itemsets;
 
   int num_support = ceil(total_transactions * support);
+  cout << "Constructing frequent itemsets with support " << num_support << endl;
+  auto start = chrono::high_resolution_clock::now();
   tree->make_frequent_itemsets(frqnt_itemsets, num_support);
+  auto end = chrono::high_resolution_clock::now();
+  auto duration = chrono::duration_cast<chrono::seconds>(end - start).count();
+  cout << "Frequent itemsets constructed in " << duration << " seconds" << endl;
 
   output = vector<vector<string>>();
   auto compare_vec_lexico = [](vector<string>& a, vector<string>& b) {
