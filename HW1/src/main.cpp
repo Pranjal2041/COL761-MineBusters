@@ -5,13 +5,11 @@
 #include <string>
 #include <vector>
 
-#include "fptree.hpp"
 #include "apriori.hpp"
+#include "fptree.hpp"
 #include "util.hpp"
 
-
 using namespace std;
-
 
 // main function with argc and argv
 int main(int argc, char *argv[]) {
@@ -24,7 +22,7 @@ int main(int argc, char *argv[]) {
   cin.tie(NULL);
   string algorithm = argv[1];
   string dataset_name = argv[2];
-  float support = atof(argv[3]);
+  float support = atof(argv[3]) / 100.0f;
   string output_filename = argv[4];
 
   if (algorithm == "apriori") {
@@ -42,16 +40,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-
   vector<vector<string>> output;
   if (algorithm == "apriori") {
-    solve_apriori(dataset_name, support, output);
+    AprioriSolver::solve(dataset_name, support, output_filename);
+
   } else if (algorithm == "fptree") {
-    solve_fptree(dataset_name, support, output);
+    FPTreeSolver::solve(dataset_name, support, output_filename);
   }
-
-  // Write output to output_file
-  write_output(output, output_filename);
-
   return 0;
 }

@@ -1,5 +1,4 @@
 #include "fptree.hpp"
-
 const string FPTree::ROOT_ITEM = "root";
 FPTree::FPTree() {
   root = make_unique<FPNode>();
@@ -113,9 +112,34 @@ void FPTree::make_frequent_itemsets(
     }
   }
 }
+vector<unordered_set<string>> FPTreeSolver::frqnt_itemsets;
+string FPTreeSolver::output_filename;
+vector<vector<string>> FPTreeSolver::output;
 
-void solve_fptree(string dataset_name, float support,
-                  vector<vector<string>>& output) {
+void FPTreeSolver::_sighandler(int signum) {
+  if (signum == SIGALRM) {
+    cout << "timeout" << endl;
+    make_output();
+    cout << "Output dumped!" << endl;
+  }
+}
+
+void FPTreeSolver::make_output() {
+  for (auto& itemset : FPTreeSolver::frqnt_itemsets) {
+    vector<string> itemset_vec(itemset.begin(), itemset.end());
+    sort(itemset_vec.begin(), itemset_vec.end());
+    FPTreeSolver::output.push_back(itemset_vec);
+  }
+  sort(FPTreeSolver::output.begin(), FPTreeSolver::output.end(),
+       compare_vec_lexico);
+  write_output(output, FPTreeSolver::output_filename);
+}
+
+void FPTreeSolver::solve(string dataset_name, float support,
+                         string output_filename) {
+  FPTreeSolver::output_filename = output_filename;
+  signal(SIGALRM, FPTreeSolver::_sighandler);
+  alarm(TIMEOUT);
   auto dataset = FileIterator(dataset_name);
   unordered_map<string, int> item_count;
   int total_transactions = 0;
@@ -173,30 +197,12 @@ void solve_fptree(string dataset_name, float support,
 
   tree->finalize_transactions();
 
-  vector<unordered_set<string>> frqnt_itemsets;
-
   cout << "Constructing frequent itemsets with support " << num_support << endl;
   start = chrono::high_resolution_clock::now();
-  tree->make_frequent_itemsets(frqnt_itemsets, num_support);
+  tree->make_frequent_itemsets(FPTreeSolver::frqnt_itemsets, num_support);
   end = chrono::high_resolution_clock::now();
   duration = chrono::duration_cast<chrono::seconds>(end - start).count();
   cout << "Frequent itemsets constructed in " << duration << " seconds" << endl;
 
-  output = vector<vector<string>>();
-  auto compare_vec_lexico = [](vector<string>& a, vector<string>& b) {
-    auto sz = min(a.size(), b.size());
-    for (int i = 0; i < sz; i++) {
-      if (a[i] != b[i]) {
-        return a[i] < b[i];
-      }
-    }
-    return a.size() < b.size();
-  };
-
-  for (auto& itemset : frqnt_itemsets) {
-    vector<string> itemset_vec(itemset.begin(), itemset.end());
-    sort(itemset_vec.begin(), itemset_vec.end());
-    output.push_back(itemset_vec);
-  }
-  sort(output.begin(), output.end(), compare_vec_lexico);
+  FPTreeSolver::make_output();
 }
