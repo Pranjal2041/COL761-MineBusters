@@ -1,0 +1,11 @@
+{
+  "files.associations": {
+    "*.yacc": "yacc",
+    "*.cfg": "yaml",
+    "*.txt": "plaintext",
+    "ostream": "cpp",
+    "iosfwd": "cpp",
+    "iostream": "cpp",
+    "chrono": "cpp"
+  }
+}
