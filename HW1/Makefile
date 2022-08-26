@@ -1,5 +1,5 @@
 CXX      := g++
-CXXFLAGS := -Wall -std=c++14 -g
+CXXFLAGS := -Wall -std=c++14 -O2
 LDFLAGS  := -L/usr/lib -lstdc++ -lm
 BUILD    := ./build
 OBJ_DIR  := $(BUILD)/objects

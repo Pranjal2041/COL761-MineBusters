@@ -20,6 +20,8 @@ int main(int argc, char *argv[]) {
          << " <algorithm> <dataset_name> <support> <output_filename>" << endl;
     return 1;
   }
+  ios_base::sync_with_stdio(false);
+  cin.tie(NULL);
   string algorithm = argv[1];
   string dataset_name = argv[2];
   float support = atof(argv[3]);

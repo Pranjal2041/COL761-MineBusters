@@ -119,6 +119,9 @@ void solve_fptree(string dataset_name, float support,
   auto dataset = FileIterator(dataset_name);
   unordered_map<string, int> item_count;
   int total_transactions = 0;
+
+  auto start = chrono::high_resolution_clock::now();
+
   vector<string> transaction;
   dataset.next(transaction);
   while (transaction.size() != 0) {
@@ -132,39 +135,51 @@ void solve_fptree(string dataset_name, float support,
     total_transactions++;
     dataset.next(transaction);
   }
-
+  auto end = chrono::high_resolution_clock::now();
+  auto duration = chrono::duration_cast<chrono::seconds>(end - start).count();
   printf("First pass done. Found %d total transactions\n", total_transactions);
+  printf("Time taken: %d seconds\n", duration);
+
+  int num_support = ceil(total_transactions * support);
 
   auto tree = make_unique<FPTree>();
   dataset = FileIterator(dataset_name);
 
   transaction.clear();
+  start = chrono::high_resolution_clock::now();
+
   dataset.next(transaction);
   int trans_done = 0;
   while (transaction.size() != 0) {
-    sort(transaction.begin(), transaction.end(), [&](string a, string b) {
+    vector<string> tx;
+    for (auto& t : transaction) {
+      if (item_count[t] >= num_support) {
+        tx.push_back(t);
+      }
+    }
+    sort(tx.begin(), tx.end(), [&](string a, string b) {
       if (item_count[a] != item_count[b]) {
         return item_count[a] > item_count[b];
       }
       return a > b;
     });
-    tree->add_transaction(transaction);
-    cout << "transactions done " << trans_done << endl;
-    trans_done++;
+    tree->add_transaction(tx);
     dataset.next(transaction);
   }
+  end = chrono::high_resolution_clock::now();
+  duration = chrono::duration_cast<chrono::seconds>(end - start).count();
   cout << "Second pass done. Tree constructed" << endl;
+  printf("Time taken: %d seconds\n", duration);
 
   tree->finalize_transactions();
 
   vector<unordered_set<string>> frqnt_itemsets;
 
-  int num_support = ceil(total_transactions * support);
   cout << "Constructing frequent itemsets with support " << num_support << endl;
-  auto start = chrono::high_resolution_clock::now();
+  start = chrono::high_resolution_clock::now();
   tree->make_frequent_itemsets(frqnt_itemsets, num_support);
-  auto end = chrono::high_resolution_clock::now();
-  auto duration = chrono::duration_cast<chrono::seconds>(end - start).count();
+  end = chrono::high_resolution_clock::now();
+  duration = chrono::duration_cast<chrono::seconds>(end - start).count();
   cout << "Frequent itemsets constructed in " << duration << " seconds" << endl;
 
   output = vector<vector<string>>();
