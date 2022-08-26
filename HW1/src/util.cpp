@@ -50,3 +50,13 @@ void print_v(vector<string>& v) {
   }
   cout << endl;
 }
+
+bool compare_vec_lexico(vector<string>& a, vector<string>& b) {
+  auto sz = min(a.size(), b.size());
+  for (int i = 0; i < sz; i++) {
+    if (a[i] != b[i]) {
+      return a[i] < b[i];
+    }
+  }
+  return a.size() < b.size();
+};

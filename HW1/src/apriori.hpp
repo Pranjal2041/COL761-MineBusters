@@ -1,11 +1,21 @@
 // #pragma once
 #include <bits/stdc++.h>
 
-#include "util.hpp"
-#include<iostream> 
-#include<vector> // for vector 
-#include<algorithm> // for copy() and assign() 
-#include<iterator> // for back_inserter 
+#include <algorithm>  // for copy() and assign()
+#include <iostream>
+#include <iterator>  // for back_inserter
+#include <vector>    // for vector
 
-void solve_apriori(string dataset_name, float support, vector<vector<string>> &output);
-vector<vector<string>> generateCandidateSet(vector<vector<string>>& frequent_itemsets);
+#include "util.hpp"
+class AprioriSolver {
+ public:
+  static void solve(string dataset_name, float support, string output_filename);
+
+ private:
+  static void generateCandidateSet(vector<vector<string>>& frequent_itemsets,
+                                   vector<vector<string>>& candidate_set);
+  static void _sighandler(int signum);
+  static void make_output();
+  static string output_filename;
+  static vector<vector<string>> output;
+};

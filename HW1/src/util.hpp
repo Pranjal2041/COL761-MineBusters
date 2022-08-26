@@ -1,6 +1,9 @@
 #pragma once
 #include <bits/stdc++.h>
+#include <unistd.h>
+
 using namespace std;
+#define TIMEOUT 3000
 
 // Create an iterator for reading dataset file
 class FileIterator {
@@ -17,3 +20,4 @@ class FileIterator {
 
 void write_output(vector<vector<string>> data, string filename);
 void print_v(vector<string>& v);
+bool compare_vec_lexico(vector<string>& a, vector<string>& b);

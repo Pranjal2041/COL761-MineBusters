@@ -37,5 +37,14 @@ class FPTree {
   void validate_item(string item);
 };
 
-void solve_fptree(string dataset_name, float support,
-                  vector<vector<string>>& output);
+class FPTreeSolver {
+ public:
+  static void solve(string dataset_name, float support, string output_filename);
+
+ private:
+  static void _sighandler(int signum);
+  static void make_output();
+  static vector<unordered_set<string>> frqnt_itemsets;
+  static string output_filename;
+  static vector<vector<string>> output;
+};
