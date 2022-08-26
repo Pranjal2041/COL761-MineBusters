@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
   cin.tie(NULL);
   string algorithm = argv[1];
   string dataset_name = argv[2];
-  float support = atof(argv[3]);
+  float support = atof(argv[3]) / 100.0f;
   string output_filename = argv[4];
 
   if (algorithm == "apriori") {
