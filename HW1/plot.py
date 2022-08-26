@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 fptimes = []
 with open("fptree_times.txt", "r") as f:
     for line in f:
-        fptimes.append(float(line))
+        fptimes.append(float(line[:line.index('m')]) * 60 + float(line[line.index('m')+1: line.index('s')]))
 
 aptimes = []
-with open("ap_times.txt", "r") as f:
+with open("apriori_times.txt", "r") as f:
     for line in f:
-        aptimes.append(float(line))
+        aptimes.append(float(line[:line.index('m')]) * 60 + float(line[line.index('m')+1: line.index('s')]))
 
 xs = [0.05, 0.1, 0.25, 0.5, 0.9]
 plt.plot(xs, fptimes, label="FPTree")

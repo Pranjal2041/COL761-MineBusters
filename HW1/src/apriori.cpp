@@ -1,141 +1,157 @@
+// #pragma once
 #include "apriori.hpp"
 
-class Apriori {
-    float support;
-}
-
-unordered_map<vector<string>, int> findNextFrequentSet(unordered_map<vector<string>, int> C, float support) {
-  unordered_map<vector<string>, int> F_next;
-  for (auto candidate: C) {
-    if (candidate.second >= support) {
-      F_next[candidate.first] = candidate.second;
-    }
-  }
-  unordered_map<vector<string>, int> F_sorted;
-  for (auto f: F_next) {
-    vector<string> itemset_vec(f.begin(), f.end());
-    sort(itemset_vec.begin(), itemset_vec.end());
-    F_sorted[itemset_vec] = f.second;
-  }
-  return F_sorted;
-}
-
-unordered_map<vector<string>, int> findNextCandidateSet(unordered_map<vector<string>, int> Fi, float support, string dataset_name){
-  unordered_map<vector<string>, int> C_next;
-  auto dataset = FileIterator(dataset_name);
-  dataset.next(transaction);
-  k = Fi.size()
-  // vector<tuple<int, int>>
-  for (auto x: Fi) {
-    for (auto y: Fi) {
-      if (x != y) {
-        int i = 0;
-        vector<string> tmp;
-        while (x[i] == y[i]) {
-          tmp.push_back(x[i]);
-          i++;
-          if (i == k-1) {
-            if (x[i-1] < y[i-1]) {
-              tmp.push_back(x[i-1])
-              tmp.push_back(y[i-1])
-            }
-            else {
-              tmp.push_back(y[i-1])
-              tmp.push_back(x[i-1])
-            }
-            if !isPrunable(tmp) {
-              C_next[tmp] = 0
-              while (transaction.size() != 0) {
-                for (auto& t : transaction) {
-                  if checkItemset(t, tmp) {
-                    C_next[tmp]++;
-                  }
+vector<vector<string>> generateCandidateSet(vector<vector<string>>& frequent_itemsets){
+    vector<vector<string>> ck;
+    // for (auto &f1 : frequent_itemsets){
+    for (int ii = 0 ; ii < frequent_itemsets.size(); ii++){
+        auto f1 = frequent_itemsets[ii];
+        for (int jj = ii+1 ; jj < frequent_itemsets.size(); jj++){
+            auto f2 = frequent_itemsets[jj];
+            auto k = f1.size();
+            bool flag = true;
+            for( int i = 0; i < k - 1; i++){
+                if (f1[i]!=f2[i]){
+                    flag = false;
+                    break;
                 }
-                dataset.next(transaction);
-              }
             }
-          }
+            if (!flag){
+                continue; // In some situations we can break instead?
+            }
+            // Assert: First k - 1 elements are same
+            if (f1[k-1] >= f2[k-1]){
+                continue;  // We can further optimize it. Just don't use advanced for loop :)
+            }
+            vector<string> c;
+            copy(f1.begin(), f1.end(), back_inserter(c)); 
+            c.push_back(f2[k-1]);
+            ck.push_back(c);
         }
-      }
     }
-  }
-  return C_next;
+    return ck;
 }
 
+void solve_apriori(string dataset_name, float support, vector<vector<string>> &output)
+{
+    auto dataset = FileIterator(dataset_name);
+    unordered_map<string, int> item_count;
 
+    vector<vector<string>> frequent_itemsets;
+    vector<int> frequent_counts;
 
-bool isPrunable(vector<string> c, unordered_map<vector<string>, int> F) {
-  for (auto xi: c) {
-    vector<string> newvec;
-    newvec = c;
-    remove(newvec.begin(),newvec.end(),xi);
-    if !checkSubsetinF(newvec, F) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool checkSubsetinF(vector<string> c, unordered_map<vector<string>, int> F) {
-  set<string> s(c.begin(),c.end());
-  for (auto f: F) {
-    set<int> fx(f.first.begin(),f.first.end());
-    if (s == fx) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool checkItemset(auto t, vector<string> c) {
-  allPresent = true;
-  for (auto i: c) {
-    if (t.find(i) == t.end()) {
-        allPresent = false;
-        break;
-      }
-  }
-  return allPresent;
-}
-
-void solve_apriori(string dataset_name, float support, vector<vector<string>>& output) {
-  auto dataset = FileIterator(dataset_name);
-  unordered_map<string, int> item_count;
-  unordered_map<vector<string>, int> F1;
-  int total_transactions = 0;
-  vector<string> transaction;
-  dataset.next(transaction);
-  while (transaction.size() != 0) {
-    for (auto& t : transaction) {
-      if (item_count.find(t) == item_count.end()) {
-        item_count[t] = 1;
-      } else {
-        item_count[t]++;
-      }
-    }
-    total_transactions++;
+    int total_transactions = 0;
+    vector<string> transaction;
     dataset.next(transaction);
+    while (transaction.size() != 0)
+    {
+        for (auto &t : transaction)
+        {
+            if (item_count.find(t) == item_count.end())
+            {
+                item_count[t] = 1;
+            }
+            else
+            {
+                item_count[t]++;
+            }
+        }
+        total_transactions++;
+        if (total_transactions % 1000 == 0){
+            cout << total_transactions << endl;
+        }
+        dataset.next(transaction);
     }
-  for (auto c: item_count) {
-    if (c.second >= support) {
-      vector<string> temp;
-      temp.push_back(c.first)
-      F1[temp] = c.second;
+    cout << "First 1 Line of Algo Complete" << endl;
+
+    int num_support =  ceil(total_transactions * support);
+
+    for (auto c: item_count) {
+        if (c.second >= num_support) {
+            vector<string> temp;
+            temp.push_back(c.first);
+            frequent_itemsets.push_back(temp);
+            frequent_counts.push_back(c.second);
+        }
     }
-  }
-  printf("First pass done. Found %d total transactions\n", total_transactions);
-  unordered_map<vector<string>, int> F_prev = F1
-  while (true) {
-    C_next = findNextCandidateSet(F_prev, support, dataset_name);
-    if (!C_next.empty()) {
-      F_new = findNextFrequentSet(C_next, support);
-      if (F_new.empty()) {
-        return F_prev;
-      }
+    vector<int> indices;
+    for (int i = 0; i < frequent_itemsets.size(); i++){
+        indices.push_back(i);
     }
-    else {
-      return F_prev;
+
+    
+
+    sort(indices.begin(), indices.end(), [&](int a, int b){
+        return frequent_itemsets[a][0] < frequent_itemsets[b][0];
+    });
+    vector<vector<string>> f_new;
+    vector<int> f_counts;    
+    for (int idx = 0; idx < indices.size(); idx++){
+        f_new.push_back(frequent_itemsets[indices[idx]]);
+        f_counts.push_back(frequent_counts[indices[idx]]);
     }
-    F_prev = F_new;
-  }
+
+
+
+    cout << "First 2 Lines of Algo Complete" << endl;
+
+    for (int k = 2; ; k++){
+        cout << k << endl;
+        for (auto &f: f_new){
+            output.push_back(f);
+        }
+        auto ck = generateCandidateSet(f_new);
+        if (ck.size()==0){
+            break;
+        }
+
+        auto dataset = FileIterator(dataset_name);
+        unordered_set<string> transaction;
+        dataset.next(transaction);
+
+        vector<int> freq_counts = vector<int>(ck.size(), 0);
+        int tt = 0;
+        while (transaction.size() != 0)
+        {
+            tt ++;
+            for (int i = 0; i< ck.size(); i++){
+                auto c = ck[i];
+                vector<string> outp(c.size());
+                bool flag = true;
+                for (auto cc : c){
+                    if (transaction.find(cc) == transaction.end()){
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag){
+                    freq_counts[i]++;
+                }
+            }
+            dataset.next(transaction);
+        }
+
+        f_new.clear();
+        f_counts.clear();
+        for (int i = 0; i< ck.size(); i++){
+            auto f = ck[i];
+            auto cnts = freq_counts[i]; 
+            if (cnts >= num_support) {
+                f_new.push_back(f);
+                f_counts.push_back(cnts);
+            }
+        }
+        
+    }
+
+    auto compare_vec_lexico = [](vector<string>& a, vector<string>& b) {
+        auto sz = min(a.size(), b.size());
+        for (int i = 0; i < sz; i++) {
+        if (a[i] != b[i]) {
+            return a[i] < b[i];
+        }
+        }
+        return a.size() < b.size();
+    };
+    sort(output.begin(), output.end(), compare_vec_lexico);
 }

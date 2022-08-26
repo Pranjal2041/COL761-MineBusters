@@ -6,7 +6,9 @@
 #include <vector>
 
 #include "fptree.hpp"
+#include "apriori.hpp"
 #include "util.hpp"
+
 
 using namespace std;
 
@@ -41,7 +43,7 @@ int main(int argc, char *argv[]) {
 
   vector<vector<string>> output;
   if (algorithm == "apriori") {
-    // solve_apriori(dataset_name, support);
+    solve_apriori(dataset_name, support, output);
   } else if (algorithm == "fptree") {
     solve_fptree(dataset_name, support, output);
   }

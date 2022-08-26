@@ -23,6 +23,17 @@ void FileIterator::next(vector<string>& transaction) {
   }
 }
 
+void FileIterator::next(unordered_set<string>& transaction) {
+  string line;
+  getline(file, line);
+  transaction = unordered_set<string>();
+  stringstream ss(line);
+  string item;
+  while (getline(ss, item, ' ')) {
+    transaction.insert(item);
+  }
+}
+
 void write_output(vector<vector<string>> data, string filename) {
   ofstream output_file(filename);
   for (auto i = 0ul; i < data.size(); i++) {

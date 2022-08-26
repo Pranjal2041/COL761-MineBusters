@@ -9,6 +9,7 @@ class FileIterator {
 
   // Read next line from file
   void next(vector<string>& transaction);
+  void next(unordered_set<string>& transaction);
 
  private:
   ifstream file;
