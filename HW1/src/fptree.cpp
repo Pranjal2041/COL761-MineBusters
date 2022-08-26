@@ -140,6 +140,7 @@ void solve_fptree(string dataset_name, float support,
 
   transaction.clear();
   dataset.next(transaction);
+  int trans_done = 0;
   while (transaction.size() != 0) {
     sort(transaction.begin(), transaction.end(), [&](string a, string b) {
       if (item_count[a] != item_count[b]) {
@@ -148,6 +149,8 @@ void solve_fptree(string dataset_name, float support,
       return a > b;
     });
     tree->add_transaction(transaction);
+    cout << "transactions done " << trans_done << endl;
+    trans_done++;
     dataset.next(transaction);
   }
   cout << "Second pass done. Tree constructed" << endl;

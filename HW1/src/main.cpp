@@ -10,15 +10,6 @@
 
 using namespace std;
 
-// vector<vector<string>> solve_apriori(string dataset_name, float support) {
-//   cout << "Solving using Apriori Algorithm" << endl;
-//   return vector<vector<string>>();
-// }
-
-// vector<vector<string>> solve_fptree(string dataset_name, float support) {
-//   cout << "Solving using FPTree Algorithm" << endl;
-//   return vector<vector<string>>();
-// }
 
 // main function with argc and argv
 int main(int argc, char *argv[]) {
@@ -47,18 +38,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Sample Usage of FileIterator to read the dataset file
-  // ------------------------------------------------------------
-  // FileIterator file_iterator(dataset_name);
-  // vector<string> line = file_iterator.next();
-  // while (line.size() != 0) {
-  //   for (int i = 0; i < line.size(); i++) {
-  //     cout << line[i] << " ";
-  //   }
-  //   cout << endl;
-  //   line = file_iterator.next();
-  // }
-  // ------------------------------------------------------------
 
   vector<vector<string>> output;
   if (algorithm == "apriori") {
