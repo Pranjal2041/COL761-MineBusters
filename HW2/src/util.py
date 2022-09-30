@@ -54,6 +54,7 @@ class Graph:
         return txt
 
     def make_vf3_txt(self, vlabel2id, elabel2id):
+        # TODO handle unseen labels
         txt = f"{len(self.vertices)}\n"
 
         txt += (
@@ -134,5 +135,14 @@ def mine_gspan(input_path, support, binary_path, vlabels, elabels):
     return subgraphs
 
 
-def check_vf3_subgraph():
-    pass
+def check_vf3_subgraph(subgraph_file, graph_file, vf3_binary):
+    cmd = f"{vf3_binary} {subgraph_file} {graph_file}"
+    logger.info("Running command: %s", cmd)
+
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    ret_code = p.wait()
+    if ret_code != 0:
+        raise Exception("vf3 failed")
+
+    out = p.stdout.read().decode("utf-8")
+    return int(out.split()[0]) > 0
