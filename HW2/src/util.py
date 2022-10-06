@@ -2,6 +2,7 @@ import re
 from typing import Dict, Tuple, List
 import logging
 import subprocess
+import ctypes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -134,14 +135,29 @@ def mine_gspan(input_path, support, binary_path, vlabels, elabels):
     return subgraphs
 
 
-def check_vf3_subgraph(subgraph_file, graph_file, vf3_binary):
-    cmd = f"{vf3_binary} {subgraph_file} {graph_file}"
-    logger.info("Running command: %s", cmd)
+class Vf3:
+    def __init__(self, lib_path="../bin/vf3.so") -> None:
+        self.lib_path = lib_path
+        self.lib = ctypes.cdll.LoadLibrary(lib_path)
 
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    ret_code = p.wait()
-    if ret_code != 0:
-        raise Exception("vf3 failed")
+    def is_subgraph(self, patt: Graph, graph: Graph, vlabel2id, elabel2id):
+        patt_txt = patt.make_vf3_txt(vlabel2id, elabel2id)
+        graph_txt = graph.make_vf3_txt(vlabel2id, elabel2id)
+        num_sols = self.lib.test(
+            ctypes.c_char_p(patt_txt.encode("utf-8")),
+            ctypes.c_char_p(graph_txt.encode("utf-8")),
+        )
+        return num_sols > 0
 
-    out = p.stdout.read().decode("utf-8")
-    return int(out.split()[0]) > 0
+
+# def check_vf3_subgraph(subgraph: Graph, graph: Graph, vf3_binary):
+# cmd = f"{vf3_binary} {subgraph_file} {graph_file}"
+# logger.info("Running command: %s", cmd)
+
+# p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+# ret_code = p.wait()
+# if ret_code != 0:
+#     raise Exception("vf3 failed")
+
+# out = p.stdout.read().decode("utf-8")
+# return int(out.split()[0]) > 0
