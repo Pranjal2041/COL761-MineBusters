@@ -69,8 +69,7 @@ class Graph:
             txt += f"{len(v)}\n"
             if len(v) == 0:
                 continue
-            # BUG VF3 doesn't take edge label into account ???
-            txt += "\n".join([f"{i} {j}" for i, j, _ in v]) + "\n"
+            txt += "\n".join([f"{i} {j} {l}" for i, j, l in v]) + "\n"
 
         return txt
 
