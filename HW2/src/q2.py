@@ -14,6 +14,10 @@ import time
 from util import get_tree_ordering
 from typing import List, Tuple, Dict
 import ctypes
+from collections import deque
+import heapq
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -112,6 +116,14 @@ def make_index(graph_dataset, index_dir, support):
     logger.info("Saved index file to: %s", os.path.join(index_dir, "meta.pkl"))
 
 
+class HeapNode(object):
+    def __init__(self, node, supp):
+        self.node = node
+        self.supp = supp
+
+    def __lt__(self, other):
+        return self.supp < other.supp
+
 def query_index(args, graph: Graph, **kwargs):
     graph.vf3txt = graph.make_vf3_txt(kwargs['vlabel2id'], kwargs['elabel2id'])
     graph.vf3txt = ctypes.c_char_p(graph.vf3txt.encode("utf-8"))
@@ -125,25 +137,51 @@ def query_index(args, graph: Graph, **kwargs):
     vf3 = Vf3()
     tot_feats = len(subgraphs)
     feats_checked = 0
+
+    support_iters = [0.4,0.25, 0.1, 0.]
+    support_indexes = 0
+    cand_graph_files = None
     if kwargs['tree_ordering'] is not None:
         total_checks = 0
 
         to = kwargs['tree_ordering']
         query_vector = np.zeros((len(subgraphs))).squeeze()
-        stack = []
-        stack = [x for x in to]
+        # stack = []
+        # stack = deque([x for x in to])
+        stack = [HeapNode(x, -x.graph.support) for x in to]
+        heapq.heapify(stack)
+        # print(stack)
 
         while True: 
             if len(stack) == 0:
                 break
-            s = stack[-1]
-            stack.pop()
+            # s = stack[-1]
+            s = stack[0].node
+
+            # stack.pop()
+            # stack.popleft()
+            heapq.heappop(stack)
+
+            if s.graph.support < support_iters[support_indexes]:
+                # We should possibly check for moving vf3 to tgraphs
+                index_new = index[:,query_vector.nonzero()[0]]
+                cand_graphs = index_new.all(axis = 1).nonzero()[0]
+                if len(cand_graphs) < tot_feats - total_checks:
+                    # No need to continue
+                    cand_graph_files = [kwargs['tgraphs'][kwargs['tids'][x]] for x in cand_graphs]
+                    print('Here is the stat',len(cand_graphs), tot_feats, total_checks)
+                    break
+                    # cand_graph_files = [kwargs['tgraphs'][kwargs['tids'][x]] for x in cand_graphs]
+                    # Next break
+                else:
+                    support_indexes += 1
             total_checks += 1
             feats_checked += 1
             if vf3.is_subgraph_raw(s.graph.vf3txt, graph.vf3txt, kwargs["vlabel2id"], kwargs["elabel2id"]):
                 query_vector[s.i] = 1
                 for node in s.neighbours:
-                    stack.append(node)
+                    # stack.append(node)
+                    heapq.heappush(stack, HeapNode(node, -node.graph.support))
             else:
                 feats_checked += s.counts
                 # Do not consider the children of the given node
@@ -157,16 +195,17 @@ def query_index(args, graph: Graph, **kwargs):
                 for x in subgraphs
             ]
         ).astype(int)
-
-    st = time.time()
-    index_new = index[:,query_vector.nonzero()[0]]
-    print(index_new.all(axis = 1).shape)
-    cand_graphs = index_new.all(axis = 1).nonzero()[0]
-    # cand_graphs = np.where((query_vector @ (index.T)) == query_vector.sum())[0]
-    # cand_graph_files = [os.path.join(tgraph_dir, f"{x}.txt") for x in cand_graphs]
-    cand_graph_files = [kwargs['tgraphs'][kwargs['tids'][x]] for x in cand_graphs]
-    en = time.time()
-    print('Time in cand calculation', en- st)
+    # If cand_graphs is not None, we may not need to calc again
+    if cand_graph_files is None:
+        st = time.time()
+        index_new = index[:,query_vector.nonzero()[0]]
+        # print(index_new.all(axis = 1).shape)
+        cand_graphs = index_new.all(axis = 1).nonzero()[0]
+        # cand_graphs = np.where((query_vector @ (index.T)) == query_vector.sum())[0]
+        # cand_graph_files = [os.path.join(tgraph_dir, f"{x}.txt") for x in cand_graphs]
+        cand_graph_files = [kwargs['tgraphs'][kwargs['tids'][x]] for x in cand_graphs]
+        en = time.time()
+        print('Time in cand calculation', en- st)
     
     logger.info("Found %d candidate graphs" % len(cand_graphs))
 

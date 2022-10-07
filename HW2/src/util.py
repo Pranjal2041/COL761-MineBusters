@@ -164,6 +164,12 @@ def fill_counts(node):
         node.counts += fill_counts(n) + 1
     return node.counts
 
+def sort_tree_neighbours(node):
+    node.neighbours.sort(key = lambda x : -x.graph.support)
+    for node in node.neighbours:
+        sort_tree_neighbours(node)
+
+
 from pdb import set_trace as bp
 def get_tree_ordering(graphs : List[Tuple[Graph, List[int]]]) -> List[TreeNode]:
     graphs = [x[0] for x in graphs] # remove the tids
@@ -183,6 +189,8 @@ def get_tree_ordering(graphs : List[Tuple[Graph, List[int]]]) -> List[TreeNode]:
     for n in root_trees:
         fill_counts(n)
     print('Ordering Computation Done')
+    for n in root_trees:
+        sort_tree_neighbours(n)
     # bp()
 
     return root_trees
@@ -208,10 +216,11 @@ def mine_gspan(input_path, support, binary_path, vlabels, elabels, num_graphs = 
     while i < len(out_lines):
         # print(i)
         # gid, g_count = re.match(r"t # (\d+) \* (\d+)", out_lines[i]).groups()
-        gid = re.match(r"# (\d+)", out_lines[i]).groups()
-
+        gid = re.match(r"# (\d+)", out_lines[i]).groups()[0]
+        # NOTE: gid is actually frequency for gaston
         # g = Graph(gid, support=g_count)
-        g = Graph(gid)
+        # print(gid)
+        g = Graph(gid, support  = int(gid) / num_graphs)
 
         i += 1
         i += 1
