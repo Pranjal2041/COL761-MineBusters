@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.cfg": "yaml",
+        "*.txt": "plaintext",
+        "iostream": "cpp"
+    }
+}

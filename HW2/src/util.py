@@ -30,10 +30,12 @@ class Graph:
         self.vertices: List[str] = []  # list of vertex labels
         self.edges: List[Tuple[int, int, str]] = []
         self.support: int = support
-        self.vf3txt  = ""
+        self.vf3txt = ""
 
     def is_subgraph_of(self, g):
-        if set(self.vertices).issubset(g.vertices) and set(self.edges).issubset(g.edges):
+        if set(self.vertices).issubset(g.vertices) and set(self.edges).issubset(
+            g.edges
+        ):
             return True
 
     def make_fsg_txt(self):
@@ -109,8 +111,7 @@ def make_graphs(filename) -> Dict[str, Graph]:
 
 
 class TreeNode:
-
-    def __init__(self, graph : Graph, i = -1):
+    def __init__(self, graph: Graph, i=-1):
         self.graph = graph
         self.neighbours = []
         self.i = i
@@ -125,8 +126,9 @@ class TreeNode:
             string += f" ; Counts: {self.counts}"
         return string
 
-    def add_neighbour(self, g : Graph):
+    def add_neighbour(self, g: Graph):
         self.neighbours.append(g)
+
 
 def begin_order(graphs, i, prevT):
     prevG = prevT.graph
@@ -137,7 +139,7 @@ def begin_order(graphs, i, prevT):
     while curr_graph is not None:
         curr_graph = graphs[i]
         if prevG.is_subgraph_of(curr_graph):
-            node  = TreeNode(curr_graph, i)
+            node = TreeNode(curr_graph, i)
             prevT.add_neighbour(node)
             curr_graph, i_new = begin_order(graphs, i + 1, node)
             # print(i_new, i)
@@ -149,7 +151,8 @@ def begin_order(graphs, i, prevT):
     # print('We are out somehow🤔')
     return (curr_graph, i)
 
-def vfify_all_nodes(node : TreeNode):
+
+def vfify_all_nodes(node: TreeNode):
     print(node.graph.vf3txt)
     assert isinstance(node.graph.vf3txt, str)
     node.graph.vf3txt = ctypes.c_char_p(node.graph.vf3txt)
@@ -164,9 +167,12 @@ def fill_counts(node):
         node.counts += fill_counts(n) + 1
     return node.counts
 
+
 from pdb import set_trace as bp
-def get_tree_ordering(graphs : List[Tuple[Graph, List[int]]]) -> List[TreeNode]:
-    graphs = [x[0] for x in graphs] # remove the tids
+
+
+def get_tree_ordering(graphs: List[Tuple[Graph, List[int]]]) -> List[TreeNode]:
+    graphs = [x[0] for x in graphs]  # remove the tids
     i = 0
     root_trees = [TreeNode(graphs[0], 0)]
 
@@ -182,14 +188,16 @@ def get_tree_ordering(graphs : List[Tuple[Graph, List[int]]]) -> List[TreeNode]:
         # break
     for n in root_trees:
         fill_counts(n)
-    print('Ordering Computation Done')
+    print("Ordering Computation Done")
     # bp()
 
     return root_trees
 
 
-def mine_gspan(input_path, support, binary_path, vlabels, elabels, num_graphs = -1) -> List[Tuple[Graph, List[int]]]:
-    print('Starting gspan mining')
+def mine_gspan(
+    input_path, support, binary_path, vlabels, elabels, num_graphs=-1
+) -> List[Tuple[Graph, List[int]]]:
+    print("Starting gspan mining")
     assert support > 0 and support <= 1
     output_path = input_path + ".fp"
     # cmd = f"{binary_path} -f {input_path} -s {support} -o -i"
@@ -248,7 +256,13 @@ class Vf3:
         self.lib_path = lib_path
         self.lib = ctypes.cdll.LoadLibrary(lib_path)
 
-    def is_subgraph_raw(self, patt: ctypes.c_char_p, graph : ctypes.c_char_p, vlabel2id = None, elabel2id = None):
+    def is_subgraph_raw(
+        self,
+        patt: ctypes.c_char_p,
+        graph: ctypes.c_char_p,
+        vlabel2id=None,
+        elabel2id=None,
+    ):
         num_sols = self.lib.test(
             patt,
             graph,
@@ -264,11 +278,7 @@ class Vf3:
         graph_txt_ctype = ctypes.c_char_p(graph_txt.encode("utf-8"))
         # en = time.time()
         # print('TIme in all conversions', (en - st)*1000,'ms')
-        num_sols = self.lib.test(
-            patt_txt_ctype,
-            graph_txt_ctype,
-        )
-        return num_sols > 0
+        return self.is_subgraph_raw(patt_txt_ctype, graph_txt_ctype)
 
 
 # def check_vf3_subgraph(subgraph: Graph, graph: Graph, vf3_binary):

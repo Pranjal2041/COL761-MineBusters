@@ -53,7 +53,7 @@ def make_index(graph_dataset, index_dir, support):
         input_path=gspan_file.name,
         support=support,
         # binary_path=os.path.abspath("../bin/gspan"),
-        binary_path=os.path.abspath("../gaston-1.1/gaston"),
+        binary_path=os.path.abspath("../bin/gaston"),
 
         vlabels=vlabels,
         elabels=elabels,
