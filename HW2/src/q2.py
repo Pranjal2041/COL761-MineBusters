@@ -285,7 +285,9 @@ if __name__ == "__main__":
             en = time.time()
             print("Time taken", en - st)
             all_times.append(en - st)
-        print(f"Total Time taken: {sum(all_times)} for {len(all_times)} queries")
+        print(
+            f"Total Time taken: {sum(all_times)*1000.0}ms for {len(all_times)} queries"
+        )
 
         output = "\n".join(output)
 
