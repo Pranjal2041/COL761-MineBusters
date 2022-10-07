@@ -1,0 +1,1 @@
+python3 q2.py --build --graph_dataset $1 --support 0.1
