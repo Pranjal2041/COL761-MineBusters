@@ -138,7 +138,7 @@ def query_index(args, graph: Graph, **kwargs):
     tot_feats = len(subgraphs)
     feats_checked = 0
 
-    support_iters = [0.4,0.25, 0.1, 0.]
+    support_iters = [0.6, 0.4, 0.25, 0.1, 0.]
     support_indexes = 0
     cand_graph_files = None
     if kwargs['tree_ordering'] is not None:
@@ -166,10 +166,11 @@ def query_index(args, graph: Graph, **kwargs):
                 # We should possibly check for moving vf3 to tgraphs
                 index_new = index[:,query_vector.nonzero()[0]]
                 cand_graphs = index_new.all(axis = 1).nonzero()[0]
-                if len(cand_graphs) < tot_feats - total_checks:
+                # TODO: Instead store pointers for number of elements with next higher support
+                if len(cand_graphs) *5 < tot_feats - total_checks and len(cand_graphs) < 500:
                     # No need to continue
                     cand_graph_files = [kwargs['tgraphs'][kwargs['tids'][x]] for x in cand_graphs]
-                    print('Here is the stat',len(cand_graphs), tot_feats, total_checks)
+                    # print('Here is the stat',len(cand_graphs), tot_feats, total_checks)
                     break
                     # cand_graph_files = [kwargs['tgraphs'][kwargs['tids'][x]] for x in cand_graphs]
                     # Next break
@@ -186,7 +187,7 @@ def query_index(args, graph: Graph, **kwargs):
                 feats_checked += s.counts
                 # Do not consider the children of the given node
                 pass
-        print(f'{total_checks}/{len(subgraphs)}')
+        logger.info(f'{total_checks}/{len(subgraphs)}')
     else:
         query_vector = np.array(
             [

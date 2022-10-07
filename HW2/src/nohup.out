@@ -25799,3 +25799,131 @@ Here is the stat 62 8549 249
 249/8549
 Time taken 0.23647713661193848
 Total Time taken: 3.7331783771514893 for 10 queries
+INFO:util:Num lines: 1274
+INFO:__main__:Found 157 candidate graphs
+INFO:__main__:Found 1 matches
+INFO:__main__:Found 5576 candidate graphs
+INFO:__main__:Found 1 matches
+INFO:__main__:Found 5576 candidate graphs
+INFO:__main__:Found 2 matches
+INFO:__main__:Found 5575 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 7587 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 5757 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 7617 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 3687 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 4117 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 7182 candidate graphs
+INFO:__main__:Found 0 matches
+142/8549
+Time taken 0.1793224811553955
+62/8549
+Time taken 1.7500731945037842
+63/8549
+Time taken 1.6842398643493652
+66/8549
+Time taken 1.3275716304779053
+65/8549
+Time taken 1.2076246738433838
+62/8549
+Time taken 0.9354126453399658
+40/8549
+Time taken 1.3553791046142578
+31/8549
+Time taken 0.6003165245056152
+67/8549
+Time taken 0.8226039409637451
+74/8549
+Time taken 1.3329472541809082
+Total Time taken: 11.195491313934326 for 10 queries
+INFO:util:Num lines: 1274
+INFO:__main__:Found 157 candidate graphs
+INFO:__main__:Found 1 matches
+INFO:__main__:Found 121 candidate graphs
+INFO:__main__:Found 1 matches
+INFO:__main__:Found 108 candidate graphs
+INFO:__main__:Found 2 matches
+INFO:__main__:Found 107 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 211 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 118 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 177 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 6 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 30 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:Found 62 candidate graphs
+INFO:__main__:Found 0 matches
+142/8549
+Time taken 0.18758463859558105
+179/8549
+Time taken 0.6889965534210205
+191/8549
+Time taken 0.6535272598266602
+197/8549
+Time taken 0.25482702255249023
+186/8549
+Time taken 0.2424149513244629
+182/8549
+Time taken 0.211989164352417
+83/8549
+Time taken 0.12897968292236328
+111/8549
+Time in cand calculation 0.0417935848236084
+Time taken 0.10942602157592773
+211/8549
+Time taken 0.2260744571685791
+249/8549
+Time taken 0.28685784339904785
+Total Time taken: 2.99067759513855 for 10 queries
+INFO:util:Num lines: 1274
+INFO:__main__:142/8549
+INFO:__main__:Found 157 candidate graphs
+INFO:__main__:Found 1 matches
+INFO:__main__:179/8549
+INFO:__main__:Found 121 candidate graphs
+INFO:__main__:Found 1 matches
+INFO:__main__:191/8549
+INFO:__main__:Found 108 candidate graphs
+INFO:__main__:Found 2 matches
+INFO:__main__:197/8549
+INFO:__main__:Found 107 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:186/8549
+INFO:__main__:Found 211 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:182/8549
+INFO:__main__:Found 118 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:83/8549
+INFO:__main__:Found 177 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:111/8549
+INFO:__main__:Found 6 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:211/8549
+INFO:__main__:Found 30 candidate graphs
+INFO:__main__:Found 0 matches
+INFO:__main__:249/8549
+INFO:__main__:Found 62 candidate graphs
+INFO:__main__:Found 0 matches
+Time taken 0.1839895248413086
+Time taken 0.6772160530090332
+Time taken 0.6465475559234619
+Time taken 0.25594282150268555
+Time taken 0.2424144744873047
+Time taken 0.21013450622558594
+Time taken 0.13356924057006836
+Time in cand calculation 0.041717529296875
+Time taken 0.10775232315063477
+Time taken 0.22420883178710938
+Time taken 0.2857949733734131
+Total Time taken: 2.9675703048706055 for 10 queries
