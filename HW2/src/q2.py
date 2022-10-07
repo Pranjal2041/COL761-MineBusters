@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 def setup_index_dirs(index_dir):
     shutil.rmtree(index_dir, ignore_errors=True)
     os.makedirs(index_dir, exist_ok=True)
+    os.makedirs("tmp", exist_ok=True)
     os.makedirs(os.path.join(index_dir, "tgraphs"), exist_ok=True)
     os.makedirs(os.path.join(index_dir, "subgraphs"), exist_ok=True)
 
