@@ -1,11 +1,19 @@
 import argparse
 import pickle
+from re import T
 import shutil
-from util import Graph, check_vf3_subgraph, get_labels, make_graphs, mine_gspan
+# from util import Graph, Vf3, check_vf3_subgraph, get_labels, make_graphs, mine_gspan
+from util import Graph, Vf3, get_labels, make_graphs, mine_gspan, vfify_all_nodes
+
 import os
 import numpy as np
 import tempfile
 import logging
+from util import Vf3
+import time
+from util import get_tree_ordering
+from typing import List, Tuple, Dict
+import ctypes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +28,7 @@ def setup_index_dirs(index_dir):
 
 def make_index(graph_dataset, index_dir, support):
 
-    graphs = make_graphs(graph_dataset)
+    graphs : Dict[str, Graph] = make_graphs(graph_dataset)
     logger.info("Read %d graphs" % len(graphs))
 
     vlabels, vlabel2id, elabels, elabel2id = get_labels(graphs)
@@ -28,7 +36,9 @@ def make_index(graph_dataset, index_dir, support):
         "Found %d vertex labels and %d edge labels" % (len(vlabels), len(elabels))
     )
 
-    gspan_file = tempfile.NamedTemporaryFile(mode="wt", delete=False)
+    # gspan_file = tempfile.NamedTemporaryFile(mode="wt", delete=False)
+    gspan_file = open('tmp/tmp.txt','w')
+
     gspan_file.write(
         "\n".join(
             [
@@ -39,33 +49,49 @@ def make_index(graph_dataset, index_dir, support):
     )
     gspan_file.close()
 
-    subgraphs = mine_gspan(
+    subgraphs : List[Tuple[Graph, List[int]]] = mine_gspan(
         input_path=gspan_file.name,
         support=support,
-        binary_path=os.path.abspath("../bin/gspan"),
+        # binary_path=os.path.abspath("../bin/gspan"),
+        binary_path=os.path.abspath("../gaston-1.1/gaston"),
+
         vlabels=vlabels,
         elabels=elabels,
+        num_graphs = len(graphs)
     )
-
+    try:
+        tree_ordering = get_tree_ordering(subgraphs)
+        print(len(tree_ordering))
+    except:
+        print('Error loading tree ordering! Will default to None instead')
+        tree_ordering = None
     logger.info("Mined %d frequent subgraphs" % len(subgraphs))
 
-    tdir = os.path.join(index_dir, "tgraphs")
-    subgraph_dir = os.path.join(index_dir, "subgraphs")
-    for i, graph in enumerate(graphs.values()):
-        open(os.path.join(tdir, f"{i}.txt"), "w").write(
-            graph.make_vf3_txt(vlabel2id=vlabel2id, elabel2id=elabel2id)
-        )
-    logger.info("Dumped graphs in directory %s" % tdir)
+
+    # tdir = os.path.join(index_dir, "tgraphs")
+    # subgraph_dir = os.path.join(index_dir, "subgraphs")
+    # for i, graph in enumerate(graphs.values()):
+    #     open(os.path.join(tdir, f"{i}.txt"), "w").write(
+    #         graph.make_vf3_txt(vlabel2id=vlabel2id, elabel2id=elabel2id)
+    #     )
+    # logger.info("Dumped graphs in directory %s" % tdir)
 
     index_arr = np.zeros((len(graphs), len(subgraphs))).astype(int)
     for i, (subgraph, tid_list) in enumerate(subgraphs):
-        open(os.path.join(subgraph_dir, f"{i}.txt"), "w").write(
-            subgraph.make_vf3_txt(vlabel2id=vlabel2id, elabel2id=elabel2id)
-        )
+        # open(os.path.join(subgraph_dir, f"{i}.txt"), "w").write(
+        #     subgraph.make_vf3_txt(vlabel2id=vlabel2id, elabel2id=elabel2id)
+        # )
         index_arr[list(tid_list), i] = True
 
-    logger.info("Saved subgraphs in directory: %s" % subgraph_dir)
+    # logger.info("Saved subgraphs in directory: %s" % subgraph_dir)
 
+    for x in subgraphs:
+        x[0].vf3txt = x[0].make_vf3_txt(vlabel2id, elabel2id)
+    for k in graphs:
+        graphs[k].vf3txt = graphs[k].make_vf3_txt(vlabel2id, elabel2id)
+
+
+    print('Sanity Check: ', tree_ordering[0].graph.vf3txt)
     pickle.dump(
         {
             "vlabels": vlabels,
@@ -74,39 +100,79 @@ def make_index(graph_dataset, index_dir, support):
             "elabel2id": elabel2id,
             "tids": np.array(list(graphs.keys())),
             "index": index_arr,
+            "subgraphs" : subgraphs,
+            "tgraphs" : graphs,
+            'tree_ordering' : tree_ordering
         },
         open(os.path.join(index_dir, "meta.pkl"), "wb"),
+        protocol=4,
     )
+
 
     logger.info("Saved index file to: %s", os.path.join(index_dir, "meta.pkl"))
 
 
 def query_index(args, graph: Graph, **kwargs):
+    graph.vf3txt = graph.make_vf3_txt(kwargs['vlabel2id'], kwargs['elabel2id'])
+    graph.vf3txt = ctypes.c_char_p(graph.vf3txt.encode("utf-8"))
     index = kwargs["index"]
-    subgraph_dir = os.path.join(args.index_dir, "subgraphs")
-    tgraph_dir = os.path.join(args.index_dir, "tgraphs")
-    subgraph_files = [os.path.join(subgraph_dir, x) for x in os.listdir(subgraph_dir)]
+    # subgraph_dir = os.path.join(args.index_dir, "subgraphs")
+    # tgraph_dir = os.path.join(args.index_dir, "tgraphs")
+    # subgraph_files = [os.path.join(subgraph_dir, x) for x in os.listdir(subgraph_dir)]
+    # subgraph_files.sort(key = lambda x: int(os.path.split(x)[-1].replace('.txt','')))
+    
+    subgraphs = kwargs["subgraphs"]
+    vf3 = Vf3()
+    tot_feats = len(subgraphs)
+    feats_checked = 0
+    if kwargs['tree_ordering'] is not None:
+        total_checks = 0
 
-    f = tempfile.NamedTemporaryFile(mode="wt", delete=True)
-    f.write(
-        graph.make_vf3_txt(vlabel2id=kwargs["vlabel2id"], elabel2id=kwargs["elabel2id"])
-    )
-    f.flush()
+        to = kwargs['tree_ordering']
+        query_vector = np.zeros((len(subgraphs))).squeeze()
+        stack = []
+        stack = [x for x in to]
 
-    query_vector = np.array(
-        [
-            check_vf3_subgraph(x, f.name, vf3_binary=args.vf3_binary)
-            for x in subgraph_files
-        ]
-    ).astype(int)
+        while True: 
+            if len(stack) == 0:
+                break
+            s = stack[-1]
+            stack.pop()
+            total_checks += 1
+            feats_checked += 1
+            if vf3.is_subgraph_raw(s.graph.vf3txt, graph.vf3txt, kwargs["vlabel2id"], kwargs["elabel2id"]):
+                query_vector[s.i] = 1
+                for node in s.neighbours:
+                    stack.append(node)
+            else:
+                feats_checked += s.counts
+                # Do not consider the children of the given node
+                pass
+        print(f'{total_checks}/{len(subgraphs)}')
+    else:
+        query_vector = np.array(
+            [
+                # check_vf3_subgraph(x, f.name, vf3_binary=args.vf3_binary)
+                vf3.is_subgraph_raw(x[0].vf3txt, graph.vf3txt, kwargs["vlabel2id"], kwargs["elabel2id"])
+                for x in subgraphs
+            ]
+        ).astype(int)
 
-    cand_graphs = np.where((query_vector @ (index.T)) == query_vector.sum())[0]
-    cand_graph_files = [os.path.join(tgraph_dir, f"{x}.txt") for x in cand_graphs]
+    st = time.time()
+    index_new = index[:,query_vector.nonzero()[0]]
+    print(index_new.all(axis = 1).shape)
+    cand_graphs = index_new.all(axis = 1).nonzero()[0]
+    # cand_graphs = np.where((query_vector @ (index.T)) == query_vector.sum())[0]
+    # cand_graph_files = [os.path.join(tgraph_dir, f"{x}.txt") for x in cand_graphs]
+    cand_graph_files = [kwargs['tgraphs'][kwargs['tids'][x]] for x in cand_graphs]
+    en = time.time()
+    print('Time in cand calculation', en- st)
+    
     logger.info("Found %d candidate graphs" % len(cand_graphs))
 
     matches = np.array(
         [
-            check_vf3_subgraph(f.name, x, vf3_binary=args.vf3_binary)
+            vf3.is_subgraph_raw(graph.vf3txt, x.vf3txt , kwargs["vlabel2id"], kwargs["elabel2id"])
             for x in cand_graph_files
         ]
     ).astype(bool)
@@ -114,7 +180,7 @@ def query_index(args, graph: Graph, **kwargs):
     # TODO what to do when there are no matches?
 
     logger.info("Found %d matches" % matches.sum())
-    f.close()
+    # f.close()
     return kwargs["tids"][cand_graphs[matches]]
 
 
@@ -127,7 +193,9 @@ def parse():
     )
     parser.add_argument("--index_dir", default=os.path.abspath("../data/Yeast/index"))
     parser.add_argument("--output_file", default="out.txt")
-    parser.add_argument("--vf3_binary", default=os.path.abspath("../bin/vf3"))
+    # parser.add_argument("--vf3_binary", default=os.path.abspath("../bin/vf3"))
+    parser.add_argument("--vf3_binary", default=os.path.abspath("../vf3lib/bin/vf3"))
+
     parser.add_argument("--support", default=0.6, type=float)
     return parser.parse_args()
 
@@ -140,13 +208,33 @@ if __name__ == "__main__":
     elif args.query_dataset:
 
         meta_dict = pickle.load(open(os.path.join(args.index_dir, "meta.pkl"), "rb"))
+        for x in meta_dict['subgraphs']:
+            x[0].vf3txt = ctypes.c_char_p(x[0].vf3txt.encode('utf-8'))
+        for k in meta_dict['tgraphs']:
+            meta_dict['tgraphs'][k].vf3txt = ctypes.c_char_p(meta_dict['tgraphs'][k].vf3txt.encode('utf-8'))
+        # for k in meta_dict['tree_ordering']:
+        #     vfify_all_nodes(k)
+
+
         query_graphs = make_graphs(args.query_dataset)
-        output = "\n".join(
-            [
-                "\t".join(query_index(args, g, **meta_dict))
-                for g in query_graphs.values()
-            ]
-        )
+        # output = "\n".join(
+        #     [
+        #         "\t".join(query_index(args, g, **meta_dict))
+        #         for g in query_graphs.values()
+        #     ]
+        # )
+        output = []
+        all_times = []
+        for g in query_graphs.values():
+            st = time.time()
+            output.append("\t".join(query_index(args, g, **meta_dict)))
+            en = time.time()
+            print('Time taken', en- st)
+            all_times.append(en -st)
+        print(f'Total Time taken: {sum(all_times)} for {len(all_times)} queries')
+
+        output = "\n".join(output)
+
         open(args.output_file, "w").write(output)
     else:
-        raise ValueError("Must specify either --build or --query")
+        raise ValueError("Must specify either --build or --query_dataset")

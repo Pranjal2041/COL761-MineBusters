@@ -29,7 +29,12 @@ class Graph:
         self.gid: int = gid
         self.vertices: List[str] = []  # list of vertex labels
         self.edges: List[Tuple[int, int, str]] = []
-        self.support: int = 0
+        self.support: int = support
+        self.vf3txt  = ""
+
+    def is_subgraph_of(self, g):
+        if set(self.vertices).issubset(g.vertices) and set(self.edges).issubset(g.edges):
+            return True
 
     def make_fsg_txt(self):
         txt = "t\n"
@@ -78,7 +83,7 @@ class Graph:
         return len(self.vertices)
 
 
-def make_graphs(filename):
+def make_graphs(filename) -> Dict[str, Graph]:
     graphs: Dict[str, Graph] = {}
 
     lines = open(filename, "r").readlines()
@@ -103,10 +108,93 @@ def make_graphs(filename):
     return graphs
 
 
-def mine_gspan(input_path, support, binary_path, vlabels, elabels):
+class TreeNode:
+
+    def __init__(self, graph : Graph, i = -1):
+        self.graph = graph
+        self.neighbours = []
+        self.i = i
+        self.marked = False
+        self.counts = -1
+
+    def __repr__(self) -> str:
+        string = f"Graph Id: {self.i}"
+        if len(self.neighbours) > 0:
+            string += f" ; Neighbours: {', '.join([str(x.i) for x in self.neighbours])}"
+        if self.counts != -1:
+            string += f" ; Counts: {self.counts}"
+        return string
+
+    def add_neighbour(self, g : Graph):
+        self.neighbours.append(g)
+
+def begin_order(graphs, i, prevT):
+    prevG = prevT.graph
+    if i >= len(graphs):
+        return (None, i)
+    curr_graph = graphs[i]
+    # i += 1
+    while curr_graph is not None:
+        curr_graph = graphs[i]
+        if prevG.is_subgraph_of(curr_graph):
+            node  = TreeNode(curr_graph, i)
+            prevT.add_neighbour(node)
+            curr_graph, i_new = begin_order(graphs, i + 1, node)
+            # print(i_new, i)
+            assert i_new > i
+            i = i_new
+        else:
+            # We need to backtrack, and we will return back the curr node
+            return (curr_graph, i)
+    # print('We are out somehow🤔')
+    return (curr_graph, i)
+
+def vfify_all_nodes(node : TreeNode):
+    print(node.graph.vf3txt)
+    assert isinstance(node.graph.vf3txt, str)
+    node.graph.vf3txt = ctypes.c_char_p(node.graph.vf3txt)
+    # assert isinstance(node.graph.vf3txt, str)
+    for n in node.neighbours:
+        vfify_all_nodes(n)
+
+
+def fill_counts(node):
+    node.counts = 0
+    for n in node.neighbours:
+        node.counts += fill_counts(n) + 1
+    return node.counts
+
+from pdb import set_trace as bp
+def get_tree_ordering(graphs : List[Tuple[Graph, List[int]]]) -> List[TreeNode]:
+    graphs = [x[0] for x in graphs] # remove the tids
+    i = 0
+    root_trees = [TreeNode(graphs[0], 0)]
+
+    while i < len(graphs):
+        ll, i_new = begin_order(graphs, i + 1, root_trees[-1])
+        print(i_new, i)
+        assert i_new > i
+        i = i_new
+        if i >= len(graphs):
+            break
+        root_trees.append(TreeNode(ll, i))
+        print(len(root_trees))
+        # break
+    for n in root_trees:
+        fill_counts(n)
+    print('Ordering Computation Done')
+    # bp()
+
+    return root_trees
+
+
+def mine_gspan(input_path, support, binary_path, vlabels, elabels, num_graphs = -1) -> List[Tuple[Graph, List[int]]]:
+    print('Starting gspan mining')
     assert support > 0 and support <= 1
     output_path = input_path + ".fp"
-    cmd = f"{binary_path} -f {input_path} -s {support} -o -i"
+    # cmd = f"{binary_path} -f {input_path} -s {support} -o -i"
+    cmd = f"{binary_path} {int(support * num_graphs)} {input_path} {output_path}"
+
     logger.info("Running command: %s", cmd)
     p = subprocess.Popen(cmd, shell=True)
     ret_code = p.wait()
@@ -114,11 +202,18 @@ def mine_gspan(input_path, support, binary_path, vlabels, elabels):
         raise Exception("gspan failed")
 
     out_lines = open(output_path, "r").readlines()
+    # print(out_lines)
     i = 0
     subgraphs: List[Tuple[Graph, List[int]]] = []
     while i < len(out_lines):
-        gid, g_count = re.match(r"t # (\d+) \* (\d+)", out_lines[i]).groups()
-        g = Graph(gid, support=g_count)
+        # print(i)
+        # gid, g_count = re.match(r"t # (\d+) \* (\d+)", out_lines[i]).groups()
+        gid = re.match(r"# (\d+)", out_lines[i]).groups()
+
+        # g = Graph(gid, support=g_count)
+        g = Graph(gid)
+
+        i += 1
         i += 1
         while out_lines[i][0] == "v":
             _, _, v = out_lines[i].split()
@@ -131,21 +226,47 @@ def mine_gspan(input_path, support, binary_path, vlabels, elabels):
         transaction_list = list(map(int, out_lines[i].split()[1:]))
         subgraphs.append((g, set(transaction_list)))
         i += 2
+        # i += 1
 
     return subgraphs
 
 
+# def check_vf3_subgraph(subgraph_file, graph_file, vf3_binary):
+#     cmd = f"{vf3_binary} {subgraph_file} {graph_file} -u -r 0"
+#     logger.info("Running command: %s", cmd)
+
+#     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+#     ret_code = p.wait()
+#     if ret_code != 0:
+#         raise Exception("vf3 failed")
+#     out = p.stdout.read().decode("utf-8")
+#     # print(out)
+#     # 3/0
+#     return int(out.split()[0]) > 0
 class Vf3:
     def __init__(self, lib_path="../bin/vf3.so") -> None:
         self.lib_path = lib_path
         self.lib = ctypes.cdll.LoadLibrary(lib_path)
 
+    def is_subgraph_raw(self, patt: ctypes.c_char_p, graph : ctypes.c_char_p, vlabel2id = None, elabel2id = None):
+        num_sols = self.lib.test(
+            patt,
+            graph,
+        )
+        return num_sols > 0
+
     def is_subgraph(self, patt: Graph, graph: Graph, vlabel2id, elabel2id):
+        # import time
+        # st = time.time()
         patt_txt = patt.make_vf3_txt(vlabel2id, elabel2id)
         graph_txt = graph.make_vf3_txt(vlabel2id, elabel2id)
+        patt_txt_ctype = ctypes.c_char_p(patt_txt.encode("utf-8"))
+        graph_txt_ctype = ctypes.c_char_p(graph_txt.encode("utf-8"))
+        # en = time.time()
+        # print('TIme in all conversions', (en - st)*1000,'ms')
         num_sols = self.lib.test(
-            ctypes.c_char_p(patt_txt.encode("utf-8")),
-            ctypes.c_char_p(graph_txt.encode("utf-8")),
+            patt_txt_ctype,
+            graph_txt_ctype,
         )
         return num_sols > 0
 
