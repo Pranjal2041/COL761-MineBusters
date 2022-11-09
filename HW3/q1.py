@@ -17,12 +17,13 @@ import pickle
 device = "cuda" if torch.cuda.is_available() else "cpu"
 # device = "cpu"
 
-DATASET = "1"  # 1 or 2
+DATASET = 1  # 1 or 2
 NUM_EPOCHS = 15
 
 NUM_HIDDEN_CHANNELS = 1
 NUM_HEADS = 2
 DROPOUT = 0.1
+PATIENCE = 5
 
 
 def process_dataset(dataset_num=1) -> Data:
@@ -43,7 +44,8 @@ def process_dataset(dataset_num=1) -> Data:
     from torch_geometric.utils import dense_to_sparse
 
     edge_index, edge_attr = dense_to_sparse(torch.tensor(adj))
-
+    if dataset_num == 2:
+        edge_attr = 1 - edge_attr
     X = torch.from_numpy(X.astype(np.float32)).to(device)
 
     data = Data(
@@ -58,18 +60,6 @@ def process_dataset(dataset_num=1) -> Data:
     data.val_mask = torch.tensor(
         [node_ids[i] in val_node_ids for i in range(data.x.shape[1])]
     )
-
-    def _make_edge_mask(node_mask):
-        return torch.tensor(
-            [
-                node_mask[edge_index[0][i]] & node_mask[edge_index[1][i]]
-                for i in range(edge_index.shape[1])
-            ]
-        )
-
-    data.train_edge_mask = _make_edge_mask(data.train_mask)
-    data.test_edge_mask = _make_edge_mask(data.test_mask)
-    data.val_edge_mask = _make_edge_mask(data.val_mask)
 
     return data
 
@@ -138,8 +128,8 @@ def train_epoch(model, data, epoch, optimizer):
         loss, logits = model(
             x=data.x[idx].unsqueeze(1),
             mask=data.train_mask,
-            edge_index=data.edge_index[:, data.train_edge_mask],
-            edge_attr=data.edge_attr[data.train_edge_mask],
+            edge_index=data.edge_index,
+            edge_attr=data.edge_attr,
             labels=data.y[idx],
         )
         loss.backward()  # Derive gradients.
@@ -156,15 +146,14 @@ def test_split(model, data, split="test"):
     N = data.x.shape[0]
     mae = 0
     node_mask = getattr(data, f"{split}_mask")
-    edge_mask = getattr(data, f"{split}_edge_mask")
     with torch.no_grad():
         for idx in tqdm(np.arange(N), desc=f"Evaluating {split}"):
 
             logits = model(
                 x=data.x[idx].unsqueeze(1),
                 mask=node_mask,
-                edge_index=data.edge_index[:, edge_mask],
-                edge_attr=data.edge_attr[edge_mask],
+                edge_index=data.edge_index,
+                edge_attr=data.edge_attr,
             )
             mae += torch.abs(
                 logits - data.y[idx][node_mask]
@@ -195,7 +184,7 @@ def save_model(model, path):
 def train_model(model, num_epochs):
     best_model = None
     best_mae = float("inf")
-
+    early_stopping_counter = 0
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=5e-4)
 
     for epoch in range(num_epochs):
@@ -204,6 +193,13 @@ def train_model(model, num_epochs):
         if val_mae < best_mae:
             best_mae = val_mae
             best_model = copy.deepcopy(model)
+            early_stopping_counter = 0
+        elif early_stopping_counter < PATIENCE:
+            early_stopping_counter += 1
+        else:
+            print("Ran out of patience! Early stopping")
+            break
+
     return best_model
 
 
@@ -219,5 +215,5 @@ if __name__ == "__main__":
     )
     save_model(
         model,
-        "models/d1/gat",
+        f"models/d{DATASET}/gat",
     )
