@@ -133,5 +133,8 @@ def save_model(model, data_loader, path):
 
     with open(metric_path, "w") as f:
         json.dump({"train_mae": train_mae, "val_mae": val_mae, "test_mae": test_mae}, f)
-    torch.save(model.state_dict(), os.path.join(path, "model.pt"))
+    if hasattr(model, "save_pretrained"):
+        model.save_pretrained(path)
+    else:
+        torch.save(model.state_dict(), os.path.join(path, "model.pt"))
     print("Saved model to", path)

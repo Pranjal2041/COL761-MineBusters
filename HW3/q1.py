@@ -1,3 +1,4 @@
+import json
 import torch
 from torch_geometric.nn import GATConv
 
@@ -31,6 +32,14 @@ class CustomModel(torch.nn.Module):
         dropout=0.1,
     ):
         super().__init__()
+        self.config = {
+            "num_features": num_features,
+            "hidden_channels": hidden_channels,
+            "heads": heads,
+            "num_classes": num_classes,
+            "edge_dim": edge_dim,
+            "dropout": dropout,
+        }
 
         self.conv1 = GATConv(
             num_features,
@@ -67,6 +76,17 @@ class CustomModel(torch.nn.Module):
             return loss, x
         return x
 
+    @staticmethod
+    def load_pretrained(output_dir):
+        config = json.load(open(os.path.join(output_dir, "config.json")))
+        model = CustomModel(**config)
+        model.load_state_dict(torch.load(os.path.join(output_dir, "model.pth")))
+        return model
+
+    def save_pretrained(self, output_dir):
+        json.dump(self.config, os.path.join(output_dir, "config.json"))
+        torch.save(self.state_dict(), os.path.join(output_dir, "model.pth"))
+
 
 if __name__ == "__main__":
     data = process_dataset(DATASET, p=P, f=F, do_standardize=False)
@@ -87,6 +107,6 @@ if __name__ == "__main__":
     )
     save_model(
         model=model,
-        data_loader=data,
+        data_loader=dataset,
         path=f"models/d{DATASET}_P{P}_F{F}/gat",
     )

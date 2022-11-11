@@ -1,3 +1,4 @@
+import json
 import os
 from torch_geometric.nn import Node2Vec
 import torch
@@ -101,6 +102,16 @@ class ST_GMAN(torch.nn.Module):
         use_bias: bool,
     ) -> None:
         super().__init__()
+        self.config = {
+            "L": L,
+            "K": K,
+            "d": d,
+            "num_his": num_his,
+            "num_pred": num_pred,
+            "bn_decay": bn_decay,
+            "use_bias": use_bias,
+        }
+
         D = K * d
         self.num_his = num_his
         self.num_pred = num_pred
@@ -149,6 +160,17 @@ class ST_GMAN(torch.nn.Module):
             return loss, X
         return X
 
+    @staticmethod
+    def load_pretrained(output_dir):
+        config = json.load(open(os.path.join(output_dir, "config.json")))
+        model = ST_GMAN(**config)
+        model.load_state_dict(torch.load(os.path.join(output_dir, "model.pth")))
+        return model
+
+    def save_pretrained(self, output_dir):
+        json.dump(self.config, os.path.join(output_dir, "config.json"))
+        torch.save(self.state_dict(), os.path.join(output_dir, "model.pth"))
+
 
 if __name__ == "__main__":
     data = process_dataset(DATASET, p=P, f=F, do_standardize=True)
@@ -169,6 +191,6 @@ if __name__ == "__main__":
     )
     save_model(
         model=stgman,
-        data_loader=data,
+        data_loader=dataset,
         path=f"models/d{DATASET}_P{P}_F{F}/stgman",
     )
