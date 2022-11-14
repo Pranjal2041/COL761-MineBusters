@@ -54,15 +54,17 @@ def test(model, data_loader, verbose=True):
     model.eval()
     # N = data.x.shape[0]
     N = len(data_loader)
+    num_nodes = data_loader.data.x.shape[1]
     masks = [
         data_loader.data.train_mask,
         data_loader.data.val_mask,
         data_loader.data.test_mask,
     ]
-    mu, sigma = torch.Tensor([0.0]), torch.Tensor([1.0])
+    # mu = torch.zeros((num_nodes,)).float()
+    sigma = torch.ones((num_nodes,)).float()
 
-    if hasattr(data_loader.data, "mu"):
-        mu = data_loader.data.mu
+    # if hasattr(data_loader.data, "mu"):
+    #     mu = data_loader.data.mu
     if hasattr(data_loader.data, "sigma"):
         sigma = data_loader.data.sigma
     mae_s = np.array([0, 0, 0])
@@ -122,8 +124,13 @@ def train_model(model, data_loader, optimizer, num_epochs):
 
 def save_model(model, data_loader, path):
     os.makedirs(path, exist_ok=True)
+
     train_mae, val_mae, test_mae = test(model, data_loader)
     metric_path = os.path.join(path, "metrics.json")
+
+    # import pdb
+
+    # pdb.set_trace()
 
     if os.path.exists(metric_path):
         d = json.load(open(metric_path, "r"))

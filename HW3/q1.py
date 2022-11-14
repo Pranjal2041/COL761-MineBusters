@@ -84,7 +84,7 @@ class CustomModel(torch.nn.Module):
         return model
 
     def save_pretrained(self, output_dir):
-        json.dump(self.config, os.path.join(output_dir, "config.json"))
+        json.dump(self.config, open(os.path.join(output_dir, "config.json"), "w"))
         torch.save(self.state_dict(), os.path.join(output_dir, "model.pth"))
 
 
