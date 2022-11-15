@@ -153,7 +153,14 @@ def save_model(model, data_loader, path):
             return
 
     with open(metric_path, "w") as f:
-        json.dump({"train_mae": train_mae, "val_mae": val_mae, "test_mae": test_mae}, f)
+        json.dump(
+            {
+                "train_mae": train_mae.item(),
+                "val_mae": val_mae.item(),
+                "test_mae": test_mae.item(),
+            },
+            f,
+        )
     if hasattr(model, "save_pretrained"):
         model.save_pretrained(path)
     else:
