@@ -16,11 +16,58 @@ def get_sliding_window(arr: np.ndarray, window_size: int):
     return arr[indexer]
 
 
-def process_dataset(dataset_num=1, p=1, f=1, do_standardize=True) -> TG_Data:
+def load_test_dataset(
+    X_file, adj_file, mu: torch.FloatTensor = None, sigma: torch.FloatTensor = None
+):
+    if X_file.endswith(".npz"):
+        X = torch.from_numpy(np.load(X_file)["x"]).transpose(1, 2)
+    else:
+        X = torch.from_numpy(
+            pd.read_csv(X_file, header=None).to_numpy().astype(np.float32)
+        )
+    if len(X.shape) != 3:
+        X = X.unsqueeze(-1)
+    adj = pd.read_csv(adj_file).to_numpy()[:, 1:]
+    edge_index, edge_attr = dense_to_sparse(torch.tensor(adj))
+    data = TG_Data(X, edge_index, edge_attr.float())
+    if mu is not None and sigma is not None:
+        data.x = (data.x - mu.unsqueeze(1).unsqueeze(0)) / sigma.unsqueeze(1).unsqueeze(
+            0
+        )
+        data.mu = mu
+        data.sigma = sigma
 
-    X_file = f"data/d{dataset_num}_X.csv"
-    adj_file = f"data/d{dataset_num}_adj_mx.csv"
-    splits_file = f"data/d{dataset_num}_graph_splits.npz"
+    return data
+
+
+def make_mu_sigma_tensors(data):
+    num_nodes = data.x.shape[1]
+
+    mu = torch.zeros((num_nodes,)).float()
+    sigma = torch.ones((num_nodes,)).float()
+
+    if hasattr(data, "mu"):
+        mu = data.mu
+    if hasattr(data, "sigma"):
+        sigma = data.sigma
+    return mu, sigma
+
+
+def process_dataset(
+    dataset_num=None,
+    p=1,
+    f=1,
+    do_standardize=True,
+    X_file=None,
+    adj_file=None,
+    splits_file=None,
+) -> TG_Data:
+
+    X_file = f"data/d{dataset_num}_X.csv" if X_file is None else X_file
+    adj_file = f"data/d{dataset_num}_adj_mx.csv" if adj_file is None else adj_file
+    splits_file = (
+        f"data/d{dataset_num}_graph_splits.npz" if splits_file is None else splits_file
+    )
 
     X = pd.read_csv(X_file)
     node_ids = X.columns[1:].astype(int)
@@ -30,6 +77,7 @@ def process_dataset(dataset_num=1, p=1, f=1, do_standardize=True) -> TG_Data:
         sigma = X.mean(axis=0)
         sigma += 1e-16
         X = (X - mu) / (sigma)
+
     adj = pd.read_csv(adj_file).to_numpy()[:, 1:]
     splits = np.load(splits_file)
     train_node_ids = splits["train_node_ids"]
@@ -79,8 +127,10 @@ class GATDataset(Dataset):
             "x": self.data.x[idx].to(device),
             "edge_index": self.data.edge_index.to(device),
             "edge_attr": self.data.edge_attr.to(device),
-            "labels": self.data.y[idx].to(device),
-            "mask": self.data.train_mask.to(device),
+            "labels": self.data.y[idx].to(device) if self.data.y is not None else None,
+            "mask": self.data.train_mask.to(device)
+            if hasattr(self.data, "train_mask")
+            else None,
         }
 
 
@@ -97,6 +147,10 @@ class STGMAN_Dataset(Dataset):
         return {
             "SE": self.SE.to(device),
             "X": self.data.x.transpose(1, 2)[idx].unsqueeze(0).to(device),
-            "labels": self.data.y.transpose(1, 2)[idx].unsqueeze(0).to(device),
-            "mask": self.data.train_mask.to(device),
+            "labels": self.data.y.transpose(1, 2)[idx].unsqueeze(0).to(device)
+            if self.data.y is not None
+            else None,
+            "mask": self.data.train_mask.to(device)
+            if hasattr(self.data, "train_mask")
+            else None,
         }

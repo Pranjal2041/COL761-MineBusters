@@ -9,6 +9,8 @@ import copy
 import json
 import os
 
+from data import make_mu_sigma_tensors
+
 EVAL_RATIO = float(os.environ.get("EVAL_RATIO", 0.1))
 PATIENCE = 5
 
@@ -42,7 +44,7 @@ def train_epoch(
         batch_bar.set_postfix(Loss=avg_loss / (i + 1))
 
         if (i + 1) % eval_steps == 0:
-            _, val_mae, _ = test(model, data_loader, verbose=True)
+            _, val_mae, _ = compute_metrics(model, data_loader, verbose=True)
             if val_mae < best_mae:
                 best_mae = val_mae
                 best_model = copy.deepcopy(model)
@@ -50,24 +52,13 @@ def train_epoch(
     return best_model, best_mae
 
 
-def test(model, data_loader, verbose=True):
+def predict(model, data_loader, verbose=True):
     model.eval()
-    # N = data.x.shape[0]
     N = len(data_loader)
-    num_nodes = data_loader.data.x.shape[1]
-    masks = [
-        data_loader.data.train_mask,
-        data_loader.data.val_mask,
-        data_loader.data.test_mask,
-    ]
-    # mu = torch.zeros((num_nodes,)).float()
-    sigma = torch.ones((num_nodes,)).float()
+    mu, sigma = make_mu_sigma_tensors(data=data_loader.data)
 
-    # if hasattr(data_loader.data, "mu"):
-    #     mu = data_loader.data.mu
-    if hasattr(data_loader.data, "sigma"):
-        sigma = data_loader.data.sigma
-    mae_s = np.array([0, 0, 0])
+    agg_logits = []
+
     with torch.no_grad():
         pbar = tqdm(np.arange(N), desc=f"Evaluating") if verbose else np.arange(N)
         for idx in pbar:
@@ -77,14 +68,37 @@ def test(model, data_loader, verbose=True):
                 del batch["labels"]
             logits = model(**batch)
             logits = logits.detach().cpu().squeeze(0)
-            if logits.shape[0] != masks[0].shape[0]:
-                logits = logits.transpose(0, 1)
-            for i in range(len(masks)):
-                mae_s[i] += torch.abs(
-                    (logits[masks[i]] - data_loader.data.y[idx][masks[i]])
-                    * sigma[masks[i]].unsqueeze(1)
-                ).mean()  # Check against ground-truth labels.
-    train_mae, val_mae, test_mae = (mae_s / N).tolist()
+
+            agg_logits.append((logits * sigma.unsqueeze(1) + mu.unsqueeze(1)).numpy())
+    return np.array(agg_logits)
+
+
+def compute_metrics(model, data_loader, verbose=True):
+    masks = [
+        data_loader.data.train_mask,
+        data_loader.data.val_mask,
+        data_loader.data.test_mask,
+    ]
+
+    # mae_s = np.array([0, 0, 0], dtype=np.float32)
+    mae_s = [0.0, 0.0, 0.0]
+
+    logits = predict(model=model, data_loader=data_loader, verbose=verbose)
+    logits = torch.from_numpy(logits)
+    # import pdb
+
+    # pdb.set_trace()
+    mu, sigma = make_mu_sigma_tensors(data=data_loader.data)
+    labels = (data_loader.data.y * sigma.unsqueeze(1)) + mu.unsqueeze(1)
+
+    if logits.shape[1] != masks[0].shape[0]:
+        logits = logits.transpose(1, 2)
+
+    for i in range(len(masks)):
+        mae_s[i] += torch.abs(logits - labels)[
+            :, masks[i]
+        ].mean()  # Check against ground-truth labels.
+    train_mae, val_mae, test_mae = mae_s
     if verbose:
         print("\tTrain MAE:", train_mae)
         print("\tVal MAE:", val_mae)
@@ -99,7 +113,7 @@ def train_model(model, data_loader, optimizer, num_epochs):
 
     for epoch in range(num_epochs):
         best_ep_model, best_ep_mae = train_epoch(model, data_loader, epoch, optimizer)
-        _, val_mae, _ = test(model, data_loader)
+        _, val_mae, _ = compute_metrics(model, data_loader)
 
         if best_ep_mae < val_mae:
             # NOTE should this be done?
@@ -125,7 +139,7 @@ def train_model(model, data_loader, optimizer, num_epochs):
 def save_model(model, data_loader, path):
     os.makedirs(path, exist_ok=True)
 
-    train_mae, val_mae, test_mae = test(model, data_loader)
+    train_mae, val_mae, test_mae = compute_metrics(model, data_loader)
     metric_path = os.path.join(path, "metrics.json")
 
     # import pdb

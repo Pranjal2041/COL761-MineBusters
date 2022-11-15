@@ -1,11 +1,14 @@
 import json
 import os
+import pickle
+import numpy as np
+import sys
 from torch_geometric.nn import Node2Vec
 import torch
 from tqdm import tqdm
 from torch_geometric_temporal.nn.attention.gman import GMAN, SpatioTemporalEmbedding
-from data import STGMAN_Dataset, process_dataset
-from trainer import save_model, train_model
+from data import STGMAN_Dataset, load_test_dataset, process_dataset
+from trainer import predict, save_model, train_model
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 # device = "cpu"
@@ -13,15 +16,18 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 DATASET = os.environ.get("DATASET", 1)  # 1 or 2
 NUM_EPOCHS = 15
 
-P = 12
-F = 12
 K = 2
 d = 2
 L = 2
 LR = 5e-4
 BN_DECAY = 0.99
 
+
+USERNAME = "cs1190431"
+
 SE_SAVE_PATH = f"./data/d{DATASET}_SE_{K*d}.pth"
+META_SAVE_PATH = f"{USERNAME}_meta_task2.pkl"
+MODEL_SAVE_PATH = f"{USERNAME}_meta_task2.pkl"
 
 
 def node2vec(data):
@@ -54,7 +60,7 @@ def node2vec(data):
         return total_loss / len(loader)
 
     def vectorizer_train():
-        pbar = tqdm(range(1, 101), desc="Training")
+        pbar = tqdm(range(1, 201), desc="Training")
         for _ in pbar:
             loss = vectorizer_train_epoch(node_vectorizer, loader)
             pbar.set_description_str(f"Loss: {loss:.4f}")
@@ -146,7 +152,7 @@ class ST_GMAN(torch.nn.Module):
                 * **SE** (Pytorch Float Tensor) - Spatial embedding, with shape (number of nodes, D).
 
         Return types:
-                * **X** (PyTorch Float Tensor) - Output sequence for prediction, with shape (batch_size, num_pred, num of nodes).
+                * **X** (PyTorch Float Tensor) - Output sequence for prediction, with shape (batch_size, num of nodes, num pred).
         """
         TE = self.temporal_embedding(
             torch.arange(self.num_his + self.num_pred)
@@ -157,8 +163,8 @@ class ST_GMAN(torch.nn.Module):
         X = self.gman(X, SE, TE)
         if labels is not None:
             loss = self.loss_fct(X[..., mask], labels[..., mask])
-            return loss, X
-        return X
+            return loss, X.transpose(1, 2)
+        return X.transpose(1, 2)
 
     @staticmethod
     def load_pretrained(output_dir):
@@ -172,25 +178,74 @@ class ST_GMAN(torch.nn.Module):
         torch.save(self.state_dict(), os.path.join(output_dir, "model.pth"))
 
 
-if __name__ == "__main__":
-    data = process_dataset(DATASET, p=P, f=F, do_standardize=True)
-    if os.path.exists(SE_SAVE_PATH):
-        z = torch.load(SE_SAVE_PATH)
-    else:
-        print("Running Node2Vec ....")
-        z = node2vec(data)
-
-    dataset = STGMAN_Dataset(data=data, SE=z)
-    stgman = ST_GMAN(
+def model_init(P, F):
+    return ST_GMAN(
         L=L, K=K, d=d, num_his=P, num_pred=F, bn_decay=BN_DECAY, use_bias=True
     ).to(device)
 
-    optimizer = torch.optim.Adam(stgman.parameters(), lr=LR, weight_decay=5e-4)
-    stgman = train_model(
-        model=stgman, optimizer=optimizer, data_loader=dataset, num_epochs=NUM_EPOCHS
-    )
-    save_model(
-        model=stgman,
-        data_loader=dataset,
-        path=f"models/d{DATASET}_P{P}_F{F}/stgman",
-    )
+
+if __name__ == "__main__":
+    action, P, F = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+    if action == "train":
+        X_file, adj_file, splits_file = (sys.argv[4], sys.argv[5], sys.argv[6])
+
+        data = process_dataset(DATASET, p=P, f=F, do_standardize=True)
+        # if os.path.exists(SE_SAVE_PATH):
+        #     z = torch.load(SE_SAVE_PATH)
+        # else:
+        print("Running Node2Vec ....")
+        z = node2vec(data)
+
+        dataset = STGMAN_Dataset(data=data, SE=z)
+
+        pickle.dump(
+            {
+                "adj_file": adj_file,
+                "splits_file": splits_file,
+                "mu": getattr(data, "mu", None),
+                "sigma": getattr(data, "sigma", None),
+                "z": z,
+                "p": P,
+                "f": F,
+            },
+            open(META_SAVE_PATH, "wb"),
+        )
+
+        stgman = model_init(P, F)
+
+        optimizer = torch.optim.Adam(stgman.parameters(), lr=LR, weight_decay=5e-4)
+        stgman = train_model(
+            model=stgman,
+            optimizer=optimizer,
+            data_loader=dataset,
+            num_epochs=NUM_EPOCHS,
+        )
+        save_model(
+            model=stgman,
+            data_loader=dataset,
+            path=f"models/d{DATASET}_P{P}_F{F}/stgman",
+        )
+        torch.save(stgman.state_dict(), MODEL_SAVE_PATH)
+    else:
+        X_file, output_file, model_path = (sys.argv[4], sys.argv[5], sys.argv[6])
+        pkl_file = pickle.load(open(META_SAVE_PATH, "rb"))
+        adj_file, splits_file, mu, sigma, z, f_train, p_train = (
+            pkl_file["adj_file"],
+            pkl_file["splits_file"],
+            pkl_file["mu"],
+            pkl_file["sigma"],
+            pkl_file["z"],
+            pkl_file["p"],
+            pkl_file["f"],
+        )
+        test_data = load_test_dataset(
+            X_file=X_file, adj_file=adj_file, mu=mu, sigma=sigma
+        )
+        dataset = STGMAN_Dataset(data=test_data, SE=z)
+
+        model = model_init(p_train, f_train)
+        model.load_state_dict(torch.load(model_path))
+
+        logits = predict(model=model, data_loader=dataset, verbose=True)
+
+        np.savez(output_file, logits.transpose((0, 2, 1)))
