@@ -13,6 +13,7 @@ from data import make_mu_sigma_tensors
 
 EVAL_RATIO = float(os.environ.get("EVAL_RATIO", 0.1))
 PATIENCE = 5
+TEMPORAL_DATA_RATIO = float(os.environ.get("TEMPORAL_DATA_RATIO", 1.0))
 
 
 def train_epoch(
@@ -28,7 +29,7 @@ def train_epoch(
 
     model.train()
     batch_bar = tqdm(
-        enumerate(np.random.choice(np.arange(N), N, replace=False)),
+        enumerate(np.random.choice(np.arange(int(N * TEMPORAL_DATA_RATIO)), int(N * TEMPORAL_DATA_RATIO), replace=False)),
         total=N,
         desc=f"Epoch {epoch}",
     )
@@ -60,7 +61,8 @@ def predict(model, data_loader, verbose=True):
     agg_logits = []
 
     with torch.no_grad():
-        pbar = tqdm(np.arange(N), desc=f"Evaluating") if verbose else np.arange(N)
+        pbar = tqdm(np.arange(int(N * TEMPORAL_DATA_RATIO)) +  (N - int(N * TEMPORAL_DATA_RATIO)), desc=f"Evaluating") if verbose else np.arange(int(N * TEMPORAL_DATA_RATIO)) +  (N - int(N * TEMPORAL_DATA_RATIO))
+        # pbar = tqdm(np.arange(N), desc=f"Evaluating") if verbose else np.arange(N)
         for idx in pbar:
 
             batch = data_loader[idx]
