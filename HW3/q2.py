@@ -234,7 +234,7 @@ if __name__ == "__main__":
     else:
         X_file, output_file, model_path = (sys.argv[4], sys.argv[5], sys.argv[6])
         pkl_file = pickle.load(open(META_SAVE_PATH, "rb"))
-        adj_file, splits_file, mu, sigma, z, f_train, p_train = (
+        adj_file, splits_file, mu, sigma, z, p_train, f_train = (
             pkl_file["adj_file"],
             pkl_file["splits_file"],
             pkl_file["mu"],
@@ -248,9 +248,16 @@ if __name__ == "__main__":
         )
         dataset = STGMAN_Dataset(data=test_data, SE=z)
 
-        model = model_init(p_train, f_train)
-        model.load_state_dict(torch.load(model_path))
+        model = model_init(P, F)
+
+        stdict = torch.load(model_path)
+        past_emb = stdict['temporal_embedding.weight'][:P]
+        future_emb = stdict['temporal_embedding.weight'][p_train:p_train+F]
+        temp_emb = torch.cat((past_emb, future_emb))
+        stdict['temporal_embedding.weight'] = temp_emb
+        model.load_state_dict(stdict)
+        
 
         logits = predict(model=model, data_loader=dataset, verbose=True)
 
-        np.savez(output_file, logits.transpose((0, 2, 1)))
+        np.savez(output_file.replace('.npz',''), y=logits.transpose((0, 2, 1)))
