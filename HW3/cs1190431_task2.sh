@@ -1,1 +1,2 @@
-python q2.py $1 $2 $3 $4 $5 $6 $7
+#!/bin/bash
+python q2.py $@
