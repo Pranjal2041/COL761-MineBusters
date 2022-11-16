@@ -86,11 +86,7 @@ class CustomModel(torch.nn.Module):
     def load_pretrained(output_dir):
         config = json.load(open(os.path.join(output_dir, "config.json")))
         model = CustomModel(**config)
-        model.load_state_dict(
-            torch.load(
-                os.path.join(output_dir, "model.pth"), map_location=torch.device(device)
-            )
-        )
+        model.load_state_dict(torch.load(os.path.join(output_dir, "model.pth")))
         return model
 
     def save_pretrained(self, output_dir):
@@ -165,7 +161,7 @@ if __name__ == "__main__":
         )
         dataset = GATDataset(data=test_data)
         model = model_init()
-        model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+        model.load_state_dict(torch.load(model_path))
         logits = predict(model=model, data_loader=dataset, verbose=True)
 
         logits = pd.DataFrame(logits.squeeze(-1))
