@@ -71,10 +71,10 @@ def process_dataset(
 
     X = pd.read_csv(X_file)
     node_ids = X.columns[1:].astype(int)
-    X = X.to_numpy()[:, 1:]
+    X = X.to_numpy()[:, 1:].astype(np.float32)
     if do_standardize:
         mu = X.mean(axis=0)
-        sigma = X.mean(axis=0)
+        sigma = X.std(axis=0)
         sigma += 1e-16
         X = (X - mu) / (sigma)
 
@@ -141,9 +141,12 @@ class STGMAN_Dataset(Dataset):
         self.SE = SE
 
     def __len__(self):
+        # return 128
         return self.data.x.shape[0]
 
     def __getitem__(self, idx):
+        if idx > len(self):
+            raise StopIteration
         return {
             "SE": self.SE.to(device),
             "X": self.data.x.transpose(1, 2)[idx].unsqueeze(0).to(device),

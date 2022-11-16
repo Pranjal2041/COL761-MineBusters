@@ -29,7 +29,13 @@ def train_epoch(
 
     model.train()
     batch_bar = tqdm(
-        enumerate(np.random.choice(np.arange(int(N * TEMPORAL_DATA_RATIO)), int(N * TEMPORAL_DATA_RATIO), replace=False)),
+        enumerate(
+            np.random.choice(
+                np.arange(int(N * TEMPORAL_DATA_RATIO)),
+                int(N * TEMPORAL_DATA_RATIO),
+                replace=False,
+            )
+        ),
         total=N,
         desc=f"Epoch {epoch}",
     )
@@ -37,6 +43,7 @@ def train_epoch(
     for i, idx in batch_bar:
         optimizer.zero_grad()  # Clear gradients.
         batch = data_loader[idx]
+
         loss, logits = model(**batch)
         loss.backward()  # Derive gradients.
         optimizer.step()  # Update parameters based on gradients.
@@ -61,7 +68,16 @@ def predict(model, data_loader, verbose=True):
     agg_logits = []
 
     with torch.no_grad():
-        pbar = tqdm(np.arange(int(N * TEMPORAL_DATA_RATIO)) +  (N - int(N * TEMPORAL_DATA_RATIO)), desc=f"Evaluating") if verbose else np.arange(int(N * TEMPORAL_DATA_RATIO)) +  (N - int(N * TEMPORAL_DATA_RATIO))
+        pbar = (
+            tqdm(
+                np.arange(int(N * TEMPORAL_DATA_RATIO))
+                + (N - int(N * TEMPORAL_DATA_RATIO)),
+                desc=f"Evaluating",
+            )
+            if verbose
+            else np.arange(int(N * TEMPORAL_DATA_RATIO))
+            + (N - int(N * TEMPORAL_DATA_RATIO))
+        )
         # pbar = tqdm(np.arange(N), desc=f"Evaluating") if verbose else np.arange(N)
         for idx in pbar:
 
@@ -70,7 +86,6 @@ def predict(model, data_loader, verbose=True):
                 del batch["labels"]
             logits = model(**batch)
             logits = logits.detach().cpu().squeeze(0)
-
             agg_logits.append((logits * sigma.unsqueeze(1) + mu.unsqueeze(1)).numpy())
     return np.array(agg_logits)
 

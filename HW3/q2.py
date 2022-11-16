@@ -13,7 +13,7 @@ from trainer import predict, save_model, train_model
 device = "cuda" if torch.cuda.is_available() else "cpu"
 # device = "cpu"
 
-DATASET = os.environ.get("DATASET", 1)  # 1 or 2
+DATASET = int(os.environ.get("DATASET", 1))  # 1 or 2
 NUM_EPOCHS = 15
 
 K = 2
@@ -26,7 +26,8 @@ BN_DECAY = 0.99
 USERNAME = "cs1190431"
 
 SE_SAVE_PATH = f"./data/d{DATASET}_SE_{K*d}.pth"
-META_SAVE_PATH = f"{USERNAME}_meta_task2.pkl"
+
+META_SAVE_PATH = f"{USERNAME}_d{DATASET}_meta_task2.pkl"  # TODO change this
 MODEL_SAVE_PATH = f"{USERNAME}_meta_task2.pkl"
 
 
@@ -174,7 +175,7 @@ class ST_GMAN(torch.nn.Module):
         return model
 
     def save_pretrained(self, output_dir):
-        json.dump(self.config, os.path.join(output_dir, "config.json"))
+        json.dump(self.config, open(os.path.join(output_dir, "config.json"), "w"))
         torch.save(self.state_dict(), os.path.join(output_dir, "model.pth"))
 
 
@@ -190,11 +191,15 @@ if __name__ == "__main__":
         X_file, adj_file, splits_file = (sys.argv[4], sys.argv[5], sys.argv[6])
 
         data = process_dataset(DATASET, p=P, f=F, do_standardize=True)
-        # if os.path.exists(SE_SAVE_PATH):
-        #     z = torch.load(SE_SAVE_PATH)
-        # else:
-        print("Running Node2Vec ....")
-        z = node2vec(data)
+
+        if os.path.exists(SE_SAVE_PATH):
+            z = torch.load(SE_SAVE_PATH)
+        else:
+            print("Running Node2Vec ....")
+            z = node2vec(data)
+
+        # print("Running Node2Vec ....")
+        # z = node2vec(data)
 
         dataset = STGMAN_Dataset(data=data, SE=z)
 
