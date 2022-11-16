@@ -27,7 +27,6 @@ USERNAME = "cs1190431"
 
 SE_SAVE_PATH = f"./data/SE_{K*d}.pth"
 
-META_SAVE_PATH = f"{USERNAME}_meta_task2.pkl"  # TODO change this
 MODEL_SAVE_PATH = f"{USERNAME}_task2.model"
 
 
@@ -220,7 +219,7 @@ if __name__ == "__main__":
                 "p": P,
                 "f": F,
             },
-            open(META_SAVE_PATH, "wb"),
+            open(MODEL_SAVE_PATH + ".meta", "wb"),
         )
 
         stgman = model_init(P, F)
@@ -241,7 +240,7 @@ if __name__ == "__main__":
         # )
     else:
         X_file, output_file, model_path = (sys.argv[4], sys.argv[5], sys.argv[6])
-        pkl_file = pickle.load(open(META_SAVE_PATH, "rb"))
+        pkl_file = pickle.load(open(model_path + ".meta", "rb"))
         adj_file, splits_file, mu, sigma, z, p_train, f_train = (
             pkl_file["adj_file"],
             pkl_file["splits_file"],

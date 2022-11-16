@@ -24,7 +24,6 @@ F = 1
 
 USERNAME = "cs1190431"
 MODEL_SAVE_PATH = f"{USERNAME}_task1.model"
-META_SAVE_PATH = f"{USERNAME}_meta_task1.pkl"
 
 
 class CustomModel(torch.nn.Module):
@@ -128,7 +127,7 @@ if __name__ == "__main__":
                 "mu": getattr(data, "mu", None),
                 "sigma": getattr(data, "sigma", None),
             },
-            open(META_SAVE_PATH, "wb"),
+            open(MODEL_SAVE_PATH + ".meta", "wb"),
         )
 
         dataset = GATDataset(data)
@@ -150,7 +149,7 @@ if __name__ == "__main__":
 
     elif action == "test":
         X_file, output_file, model_path = (sys.argv[2], sys.argv[3], sys.argv[4])
-        pkl_file = pickle.load(open(META_SAVE_PATH, "rb"))
+        pkl_file = pickle.load(open(model_path + ".meta", "rb"))
         adj_file, splits_file, mu, sigma = (
             pkl_file["adj_file"],
             pkl_file["splits_file"],
