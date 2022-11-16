@@ -170,7 +170,11 @@ class ST_GMAN(torch.nn.Module):
     def load_pretrained(output_dir):
         config = json.load(open(os.path.join(output_dir, "config.json")))
         model = ST_GMAN(**config)
-        model.load_state_dict(torch.load(os.path.join(output_dir, "model.pth")))
+        model.load_state_dict(
+            torch.load(
+                os.path.join(output_dir, "model.pth"), map_location=torch.device(device)
+            )
+        )
         return model
 
     def save_pretrained(self, output_dir):
@@ -257,7 +261,7 @@ if __name__ == "__main__":
 
         model = model_init(P, F)
 
-        stdict = torch.load(model_path)
+        stdict = torch.load(model_path, map_location=torch.device(device=device))
         past_emb = stdict["temporal_embedding.weight"][:P]
         future_emb = stdict["temporal_embedding.weight"][p_train : p_train + F]
         temp_emb = torch.cat((past_emb, future_emb))
