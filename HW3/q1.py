@@ -13,13 +13,12 @@ from trainer import train_model, save_model, predict
 device = "cuda" if torch.cuda.is_available() else "cpu"
 # device = "cpu"
 
-NUM_EPOCHS = int(os.environ.get("NUM_EPOCHS", 15))
+NUM_EPOCHS = int(os.environ.get("NUM_EPOCHS", 10))
 
 NUM_HIDDEN_CHANNELS = 2
 NUM_HEADS = 2
 DROPOUT = 0
 
-DATASET = os.environ.get("DATASET", 1)  # 1 or 2
 P = 1
 F = 1
 
@@ -141,12 +140,13 @@ if __name__ == "__main__":
             data_loader=dataset,
             num_epochs=NUM_EPOCHS,
         )
-        save_model(
-            model=model,
-            data_loader=dataset,
-            path=f"models/d{DATASET}_P{P}_F{F}/gat",
-        )
         torch.save(model.state_dict(), MODEL_SAVE_PATH)
+        # save_model(
+        #     model=model,
+        #     data_loader=dataset,
+        #     # path=f"models/d{DATASET}_P{P}_F{F}/gat",
+        #     path=f"models/P{P}_F{F}/gat",
+        # )
 
     elif action == "test":
         X_file, output_file, model_path = (sys.argv[2], sys.argv[3], sys.argv[4])

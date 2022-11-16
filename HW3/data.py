@@ -135,10 +135,11 @@ class GATDataset(Dataset):
 
 
 class STGMAN_Dataset(Dataset):
-    def __init__(self, data: TG_Data, SE: torch.FloatTensor) -> None:
+    def __init__(self, data: TG_Data, SE: torch.FloatTensor, merge_val=False) -> None:
         super().__init__()
         self.data = data
         self.SE = SE
+        self.merge_val = merge_val
 
     def __len__(self):
         # return 128
@@ -147,13 +148,14 @@ class STGMAN_Dataset(Dataset):
     def __getitem__(self, idx):
         if idx > len(self):
             raise StopIteration
+        merge_mask = torch.zeros(self.data.x[1].shape) if not self.merge_val else self.data.val_mask
         return {
             "SE": self.SE.to(device),
             "X": self.data.x.transpose(1, 2)[idx].unsqueeze(0).to(device),
             "labels": self.data.y.transpose(1, 2)[idx].unsqueeze(0).to(device)
             if self.data.y is not None
             else None,
-            "mask": self.data.train_mask.to(device)
+            "mask": (self.data.train_mask | merge_mask).to(device) 
             if hasattr(self.data, "train_mask")
             else None,
         }

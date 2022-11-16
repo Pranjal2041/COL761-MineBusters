@@ -13,8 +13,8 @@ from trainer import predict, save_model, train_model
 device = "cuda" if torch.cuda.is_available() else "cpu"
 # device = "cpu"
 
-DATASET = int(os.environ.get("DATASET", 1))  # 1 or 2
-NUM_EPOCHS = 15
+# DATASET = int(os.environ.get("DATASET", 1))  # 1 or 2
+NUM_EPOCHS = int(os.environ.get("NUM_EPOCHS", 3))
 
 K = 2
 d = 2
@@ -25,10 +25,10 @@ BN_DECAY = 0.99
 
 USERNAME = "cs1190431"
 
-SE_SAVE_PATH = f"./data/d{DATASET}_SE_{K*d}.pth"
+SE_SAVE_PATH = f"./data/SE_{K*d}.pth"
 
-META_SAVE_PATH = f"{USERNAME}_d{DATASET}_meta_task2.pkl"  # TODO change this
-MODEL_SAVE_PATH = f"{USERNAME}_meta_task2.pkl"
+META_SAVE_PATH = f"{USERNAME}_meta_task2.pkl"  # TODO change this
+MODEL_SAVE_PATH = f"{USERNAME}_task2.model"
 
 
 def node2vec(data):
@@ -190,18 +190,25 @@ if __name__ == "__main__":
     if action == "train":
         X_file, adj_file, splits_file = (sys.argv[4], sys.argv[5], sys.argv[6])
 
-        data = process_dataset(DATASET, p=P, f=F, do_standardize=True)
+        data = process_dataset(
+            p=P,
+            f=F,
+            do_standardize=True,
+            X_file=X_file,
+            adj_file=adj_file,
+            splits_file=splits_file,
+        )
 
-        if os.path.exists(SE_SAVE_PATH):
-            z = torch.load(SE_SAVE_PATH)
-        else:
-            print("Running Node2Vec ....")
-            z = node2vec(data)
+        # if os.path.exists(SE_SAVE_PATH):
+        #     z = torch.load(SE_SAVE_PATH)
+        # else:
+        #     print("Running Node2Vec ....")
+        #     z = node2vec(data)
 
-        # print("Running Node2Vec ....")
-        # z = node2vec(data)
+        print("Running Node2Vec ....")
+        z = node2vec(data)
 
-        dataset = STGMAN_Dataset(data=data, SE=z)
+        dataset = STGMAN_Dataset(data=data, SE=z, merge_val=True)
 
         pickle.dump(
             {
@@ -225,12 +232,13 @@ if __name__ == "__main__":
             data_loader=dataset,
             num_epochs=NUM_EPOCHS,
         )
-        save_model(
-            model=stgman,
-            data_loader=dataset,
-            path=f"models/d{DATASET}_P{P}_F{F}/stgman",
-        )
         torch.save(stgman.state_dict(), MODEL_SAVE_PATH)
+        # save_model(
+        #     model=stgman,
+        #     data_loader=dataset,
+        #     # path=f"models/d{DATASET}_P{P}_F{F}/stgman",
+        #     path=f"models/P{P}_F{F}/stgman",
+        # )
     else:
         X_file, output_file, model_path = (sys.argv[4], sys.argv[5], sys.argv[6])
         pkl_file = pickle.load(open(META_SAVE_PATH, "rb"))
@@ -251,13 +259,12 @@ if __name__ == "__main__":
         model = model_init(P, F)
 
         stdict = torch.load(model_path)
-        past_emb = stdict['temporal_embedding.weight'][:P]
-        future_emb = stdict['temporal_embedding.weight'][p_train:p_train+F]
+        past_emb = stdict["temporal_embedding.weight"][:P]
+        future_emb = stdict["temporal_embedding.weight"][p_train : p_train + F]
         temp_emb = torch.cat((past_emb, future_emb))
-        stdict['temporal_embedding.weight'] = temp_emb
+        stdict["temporal_embedding.weight"] = temp_emb
         model.load_state_dict(stdict)
-        
 
         logits = predict(model=model, data_loader=dataset, verbose=True)
 
-        np.savez(output_file.replace('.npz',''), y=logits.transpose((0, 2, 1)))
+        np.savez(output_file.replace(".npz", ""), y=logits.transpose((0, 2, 1)))

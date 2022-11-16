@@ -12,7 +12,7 @@ import os
 from data import make_mu_sigma_tensors
 
 EVAL_RATIO = float(os.environ.get("EVAL_RATIO", 0.1))
-PATIENCE = 5
+PATIENCE = 1
 TEMPORAL_DATA_RATIO = float(os.environ.get("TEMPORAL_DATA_RATIO", 1.0))
 
 
@@ -120,7 +120,8 @@ def compute_metrics(model, data_loader, verbose=True):
         print("\tTrain MAE:", train_mae)
         print("\tVal MAE:", val_mae)
         print("\tTest MAE:", test_mae)
-    return train_mae, val_mae, test_mae
+    # return train_mae, val_mae, test_mae
+    return train_mae, test_mae, val_mae
 
 
 def train_model(model, data_loader, optimizer, num_epochs):
@@ -162,6 +163,8 @@ def save_model(model, data_loader, path):
     # import pdb
 
     # pdb.set_trace()
+    if getattr(data_loader, "merge_val", False):
+        val_mae, test_mae = test_mae, val_mae
 
     if os.path.exists(metric_path):
         d = json.load(open(metric_path, "r"))
